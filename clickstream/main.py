@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 app = FastAPI(title="clickstream", version="0.1.0")
@@ -122,80 +122,6 @@ async def httpapi(request: Request) -> JSONResponse:
         "payload_size_bytes": len(json.dumps(body)),
         "server_upload_time": int(time.time() * 1000),
     })
-
-
-# ── Query API (for llogr search) ──
-
-@app.get("/v1/query")
-async def query_events(
-    q: str = Query(default="*"),
-    project_id: str = Query(default=""),
-    start: str | None = Query(default=None),
-    end: str | None = Query(default=None),
-    limit: int = Query(default=50, le=500),
-    authorization: str = Header(default=""),
-):
-    if authorization.startswith("Bearer ") and authorization[7:] != API_KEY:
-        raise HTTPException(status_code=401)
-
-    conditions = []
-    params = {}
-
-    if project_id:
-        conditions.append("user_id = {project_id:String}")
-        params["project_id"] = project_id
-    if start:
-        try:
-            ts = datetime.fromisoformat(start).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-        except ValueError:
-            ts = start
-        conditions.append("timestamp >= {start:String}")
-        params["start"] = ts
-    if end:
-        try:
-            ts = datetime.fromisoformat(end).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-        except ValueError:
-            ts = end
-        conditions.append("timestamp <= {end:String}")
-        params["end"] = ts
-    if q and q != "*":
-        conditions.append("event_properties ILIKE {query:String}")
-        params["query"] = f"%{q}%"
-
-    where = " AND ".join(conditions) if conditions else "1"
-    sql = f"""
-        SELECT insert_id, event_type, timestamp, user_id, device_id,
-               event_properties, user_properties, groups
-        FROM {CH_DB}.{CH_TABLE}
-        WHERE {where}
-        ORDER BY timestamp DESC
-        LIMIT {min(limit, 500)}
-        FORMAT JSON
-    """
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{CH_URL}/",
-            params={**ch_params(), "query": sql, **{f"param_{k}": v for k, v in params.items()}},
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-    results = []
-    for row in data.get("data", []):
-        try:
-            props = json.loads(row.get("event_properties", "{}"))
-        except (json.JSONDecodeError, TypeError):
-            props = {}
-        results.append({
-            "event_id": row.get("insert_id", ""),
-            "event_type": row.get("event_type", ""),
-            "timestamp": row.get("timestamp", ""),
-            "project_id": row.get("user_id", ""),
-            "payload": props,
-        })
-
-    return {"results": results}
 
 
 @app.get("/health")
