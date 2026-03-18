@@ -1,0 +1,150 @@
+# SLO Recording Rules for clickstream
+#
+# Targets:
+#   - Availability: 99.9% (error rate < 0.1%)
+#   - P99 latency: < 1s (event ingestion should be fast)
+#   - P95 latency: < 500ms
+#   - Ingestion success rate: > 99.9%
+#
+# Add to your Prometheus config:  rule_files: ["slo_rules.yml"]
+
+groups:
+  # ── Availability SLO (99.9%) ───────────────────────────────────────────
+  - name: clickstream_slo_availability
+    interval: 30s
+    rules:
+      - record: clickstream:slo_availability:ratio_rate5m
+        expr: |
+          1 - (
+            sum(rate(http_requests_total{job="clickstream", status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="clickstream"}[5m]))
+          )
+
+      - record: clickstream:slo_availability:ratio_rate30m
+        expr: |
+          1 - (
+            sum(rate(http_requests_total{job="clickstream", status_code=~"5.."}[30m]))
+            /
+            sum(rate(http_requests_total{job="clickstream"}[30m]))
+          )
+
+      - record: clickstream:slo_availability:ratio_rate1h
+        expr: |
+          1 - (
+            sum(rate(http_requests_total{job="clickstream", status_code=~"5.."}[1h]))
+            /
+            sum(rate(http_requests_total{job="clickstream"}[1h]))
+          )
+
+      - record: clickstream:slo_availability:ratio_rate6h
+        expr: |
+          1 - (
+            sum(rate(http_requests_total{job="clickstream", status_code=~"5.."}[6h]))
+            /
+            sum(rate(http_requests_total{job="clickstream"}[6h]))
+          )
+
+      - record: clickstream:slo_availability:ratio_rate24h
+        expr: |
+          1 - (
+            sum(rate(http_requests_total{job="clickstream", status_code=~"5.."}[24h]))
+            /
+            sum(rate(http_requests_total{job="clickstream"}[24h]))
+          )
+
+      - record: clickstream:slo_availability:error_budget_remaining
+        expr: |
+          1 - (
+            (1 - clickstream:slo_availability:ratio_rate24h)
+            /
+            (1 - 0.999)
+          )
+
+  # ── Latency SLO (P99 < 1s, P95 < 500ms) ──────────────────────────────
+  - name: clickstream_slo_latency
+    interval: 30s
+    rules:
+      - record: clickstream:slo_latency:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="clickstream"}[5m])) by (le)
+          )
+
+      - record: clickstream:slo_latency:p99_5m
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{job="clickstream"}[5m])) by (le)
+          )
+
+      - record: clickstream:slo_latency:p95_1h
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="clickstream"}[1h])) by (le)
+          )
+
+      - record: clickstream:slo_latency:p99_1h
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{job="clickstream"}[1h])) by (le)
+          )
+
+      # Fraction of requests completing within 1s
+      - record: clickstream:slo_latency:ratio_rate5m
+        expr: |
+          sum(rate(http_request_duration_seconds_bucket{job="clickstream", le="1"}[5m]))
+          /
+          sum(rate(http_request_duration_seconds_count{job="clickstream"}[5m]))
+
+      - record: clickstream:slo_latency:ratio_rate1h
+        expr: |
+          sum(rate(http_request_duration_seconds_bucket{job="clickstream", le="1"}[1h]))
+          /
+          sum(rate(http_request_duration_seconds_count{job="clickstream"}[1h]))
+
+      - record: clickstream:slo_latency:ratio_rate24h
+        expr: |
+          sum(rate(http_request_duration_seconds_bucket{job="clickstream", le="1"}[24h]))
+          /
+          sum(rate(http_request_duration_seconds_count{job="clickstream"}[24h]))
+
+  # ── Ingestion SLO (99.9% success) ─────────────────────────────────────
+  - name: clickstream_slo_ingestion
+    interval: 30s
+    rules:
+      # Ingestion success ratio (ingested vs total received)
+      - record: clickstream:slo_ingestion:ratio_rate5m
+        expr: |
+          sum(rate(clickstream_events_ingested_total[5m]))
+          /
+          (sum(rate(clickstream_events_ingested_total[5m])) + sum(rate(clickstream_events_dropped_total[5m])))
+
+      - record: clickstream:slo_ingestion:ratio_rate1h
+        expr: |
+          sum(rate(clickstream_events_ingested_total[1h]))
+          /
+          (sum(rate(clickstream_events_ingested_total[1h])) + sum(rate(clickstream_events_dropped_total[1h])))
+
+      # ClickHouse write error ratio
+      - record: clickstream:slo_clickhouse:error_ratio_rate1h
+        expr: |
+          sum(rate(clickstream_clickhouse_errors_total[1h]))
+          /
+          sum(rate(http_requests_total{job="clickstream", endpoint="/2/httpapi"}[1h]))
+
+      # Events ingested per hour
+      - record: clickstream:ingestion:events_rate1h
+        expr: |
+          sum(rate(clickstream_events_ingested_total[1h])) * 3600
+
+  # ── Request Volume ────────────────────────────────────────────────────
+  - name: clickstream_slo_throughput
+    interval: 30s
+    rules:
+      - record: clickstream:throughput:rate5m
+        expr: |
+          sum(rate(http_requests_total{job="clickstream"}[5m]))
+
+      - record: clickstream:throughput:rate1h
+        expr: |
+          sum(rate(http_requests_total{job="clickstream"}[1h]))

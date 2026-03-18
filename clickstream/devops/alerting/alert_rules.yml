@@ -1,0 +1,102 @@
+# Prometheus alerting rules for clickstream
+# Add to your Prometheus config:  rule_files: ["alert_rules.yml"]
+
+groups:
+  # ── HTTP Error Rate ──────────────────────────────────────────────────
+  - name: clickstream_error_rate
+    rules:
+      - alert: ClickstreamHighErrorRate5xx
+        expr: |
+          (
+            sum(rate(http_requests_total{job="clickstream", status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="clickstream"}[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: clickstream
+        annotations:
+          summary: "High 5xx error rate ({{ $value | humanizePercentage }})"
+          description: "More than 5% of clickstream requests are returning 5xx errors."
+
+  # ── ClickHouse Backend ────────────────────────────────────────────────
+  - name: clickstream_clickhouse
+    rules:
+      - alert: ClickstreamClickHouseErrors
+        expr: |
+          rate(clickstream_clickhouse_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: clickstream
+        annotations:
+          summary: "ClickHouse write errors ({{ $value | humanize }}/s)"
+          description: "clickstream is failing to write events to ClickHouse. Events are being lost."
+
+      - alert: ClickstreamHighDropRate
+        expr: |
+          (
+            sum(rate(clickstream_events_dropped_total[5m]))
+            /
+            (sum(rate(clickstream_events_ingested_total[5m])) + sum(rate(clickstream_events_dropped_total[5m])))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: clickstream
+        annotations:
+          summary: "High event drop rate ({{ $value | humanizePercentage }})"
+          description: "More than 5% of incoming events are being dropped (missing user_id/device_id)."
+
+  # ── Latency ───────────────────────────────────────────────────────────
+  - name: clickstream_latency
+    rules:
+      - alert: ClickstreamHighP95Latency
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="clickstream"}[5m])) by (le))
+          > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: clickstream
+        annotations:
+          summary: "P95 latency above 1s ({{ $value | humanizeDuration }})"
+          description: "clickstream P95 request latency exceeds 1 second."
+
+      - alert: ClickstreamHighP99Latency
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="clickstream"}[5m])) by (le))
+          > 2
+        for: 5m
+        labels:
+          severity: critical
+          service: clickstream
+        annotations:
+          summary: "P99 latency above 2s"
+          description: "P99 request latency exceeds 2 seconds — possible ClickHouse write stall."
+
+  # ── Health & Availability ─────────────────────────────────────────────
+  - name: clickstream_health
+    rules:
+      - alert: ClickstreamServiceDown
+        expr: |
+          up{job="clickstream"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: clickstream
+        annotations:
+          summary: "clickstream instance down"
+          description: "Prometheus cannot scrape the clickstream /metrics endpoint."
+
+      - alert: ClickstreamNoTraffic
+        expr: |
+          sum(rate(http_requests_total{job="clickstream"}[5m])) == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: clickstream
+        annotations:
+          summary: "No HTTP traffic for 10 minutes"
+          description: "Zero requests to clickstream — possible routing or upstream issue."

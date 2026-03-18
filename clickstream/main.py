@@ -10,8 +10,49 @@ from datetime import datetime, timezone
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as StarletteResponse
+
+# ── Prometheus metrics ──
+
+REQUEST_COUNT = Counter(
+    "http_requests_total", "Total number of HTTP requests",
+    ["method", "endpoint", "status_code"]
+)
+
+REQUEST_DURATION = Histogram(
+    "http_request_duration_seconds", "Histogram of request processing time",
+    ["method", "endpoint"]
+)
+
+EVENTS_INGESTED = Counter(
+    "clickstream_events_ingested_total", "Total events successfully ingested"
+)
+
+EVENTS_DROPPED = Counter(
+    "clickstream_events_dropped_total", "Total events dropped (missing user_id/device_id)",
+)
+
+CLICKHOUSE_ERRORS = Counter(
+    "clickstream_clickhouse_errors_total", "Total ClickHouse write errors",
+)
+
+
+class PrometheusMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        method = request.method
+        endpoint = request.url.path
+        start_time = time.time()
+        response = await call_next(request)
+        duration = time.time() - start_time
+        REQUEST_COUNT.labels(method=method, endpoint=endpoint, status_code=response.status_code).inc()
+        REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration)
+        return response
+
 
 app = FastAPI(title="clickstream", version="0.1.0")
+app.add_middleware(PrometheusMiddleware)
 
 CH_URL = os.environ.get("CLICKSTREAM_CH_URL", "http://clickhouse:8123")
 CH_DB = os.environ.get("CLICKSTREAM_CH_DATABASE", "default")
@@ -89,6 +130,7 @@ async def httpapi(request: Request) -> JSONResponse:
         user_id = ev.get("user_id", "") or ""
         device_id = ev.get("device_id", "") or ""
         if not user_id and not device_id:
+            EVENTS_DROPPED.inc()
             continue
 
         rows.append(json.dumps({
@@ -107,14 +149,19 @@ async def httpapi(request: Request) -> JSONResponse:
 
     if rows:
         data = "\n".join(rows)
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{CH_URL}/",
-                params={**ch_params(), "query": f"INSERT INTO {CH_DB}.{CH_TABLE} FORMAT JSONEachRow"},
-                content=data,
-                headers={"Content-Type": "application/json"},
-            )
-            resp.raise_for_status()
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    f"{CH_URL}/",
+                    params={**ch_params(), "query": f"INSERT INTO {CH_DB}.{CH_TABLE} FORMAT JSONEachRow"},
+                    content=data,
+                    headers={"Content-Type": "application/json"},
+                )
+                resp.raise_for_status()
+            EVENTS_INGESTED.inc(len(rows))
+        except Exception:
+            CLICKHOUSE_ERRORS.inc()
+            raise
 
     return JSONResponse(content={
         "code": 200,
@@ -127,3 +174,8 @@ async def httpapi(request: Request) -> JSONResponse:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+async def metrics():
+    return StarletteResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

@@ -4,7 +4,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-RUN uv pip install --system fastapi uvicorn httpx
+RUN uv pip install --system fastapi uvicorn httpx prometheus-client
 
 COPY main.py .
 
