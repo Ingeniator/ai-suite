@@ -1,0 +1,12 @@
+# Sub-projects (cloned via `make init`)
+yallmp/
+checkr/
+llogr/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp

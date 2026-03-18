@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ai-suite</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #1a1a1a; padding: 48px 24px; }
+h1 { font-size: 24px; font-weight: 600; margin-bottom: 24px; }
+table { width: 100%; max-width: 960px; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+th { text-align: left; padding: 10px 16px; background: #fafafa; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #666; border-bottom: 1px solid #eee; }
+td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+.tag-proxy { background: #dbeafe; color: #1e40af; }
+.tag-validation { background: #dcfce7; color: #166534; }
+.tag-observability { background: #fef3c7; color: #92400e; }
+.tag-storage { background: #f3e8ff; color: #6b21a8; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #ccc; }
+.dot.up { background: #22c55e; }
+.dot.down { background: #ef4444; }
+btn { border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; }
+.btn-test { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; }
+.btn-test:hover { background: #c7d2fe; }
+.btn-test:disabled { opacity: .5; cursor: wait; }
+#result-panel { max-width: 960px; margin-top: 24px; }
+.result-box { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 16px; overflow: hidden; }
+.result-header { padding: 10px 16px; background: #fafafa; border-bottom: 1px solid #eee; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.result-header .elapsed { font-weight: 400; color: #888; font-size: 12px; }
+.result-body { padding: 16px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto; background: #fafafa; }
+.result-ok { border-left: 3px solid #22c55e; }
+.result-err { border-left: 3px solid #ef4444; }
+</style>
+</head>
+<body>
+<h1>ai-suite</h1>
+<table>
+  <thead>
+    <tr><th>Service</th><th>Description</th><th>Pages</th><th>Status</th><th>Test</th></tr>
+  </thead>
+  <tbody id="services"></tbody>
+</table>
+<div id="result-panel"></div>
+<script>
+const services = [
+  {
+    name: "yallmp",
+    tag: "proxy", tagClass: "tag-proxy",
+    desc: "LLM proxy with circuit breaker, tracing & prompt hub",
+    health: "/ai/health",
+    pages: [
+      { label: "Dashboard", href: "/ai/dashboard" },
+      { label: "API docs", href: "/ai/docs" },
+    ],
+    test: {
+      label: "Chat completion",
+      method: "POST",
+      url: "/ai/llm/v1/chat/completions",
+      headers: { "Content-Type": "application/json" },
+      body: {
+        model: "llama-3.2-3b-instruct",
+        messages: [{ role: "user", content: "Say hello in one sentence." }],
+        max_tokens: 64
+      }
+    }
+  },
+  {
+    name: "checkr",
+    tag: "validation", tagClass: "tag-validation",
+    desc: "Multi-gate dataset validation service",
+    health: "/validators/health",
+    pages: [
+      { label: "Playground", href: "/validators/playground" },
+      { label: "API docs", href: "/validators/docs" },
+    ],
+    test: {
+      label: "Validate dataset",
+      method: "POST",
+      url: "/validators/api/v0/g-eval",
+      headers: { "Content-Type": "application/json" },
+      body: {
+        dataset: [
+          { messages: [
+            { role: "user", content: "What is the capital of France?" },
+            { role: "assistant", content: "The capital of France is Paris." }
+          ]},
+          { messages: [
+            { role: "user", content: "What is 2+2?" },
+            { role: "assistant", content: "2+2 equals 4." }
+          ]}
+        ],
+        options: {
+          criteria: "correctness",
+          description: "Is the answer factually correct?"
+        }
+      }
+    }
+  },
+  {
+    name: "llogr",
+    tag: "observability", tagClass: "tag-observability",
+    desc: "Langfuse-compatible LLM trace collector",
+    health: "/llogr/health",
+    pages: [
+      { label: "Log browser", href: "/llogr/" },
+      { label: "API docs", href: "/llogr/docs" },
+    ],
+    test: {
+      label: "Ingest event",
+      method: "POST",
+      url: "/llogr/api/public/ingestion",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer pk-local:sk-local" },
+      body: {
+        batch: [{
+          id: "test-" + Date.now(),
+          type: "generation-create",
+          timestamp: new Date().toISOString(),
+          body: {
+            id: "gen-test-" + Date.now(),
+            name: "test-from-index-page",
+            model: "llama-3.2-3b-instruct",
+            input: [{ role: "user", content: "Hello" }],
+            output: { role: "assistant", content: "Hi there!" },
+            usage: { input: 5, output: 8 }
+          }
+        }]
+      }
+    }
+  },
+  {
+    name: "minio",
+    tag: "storage", tagClass: "tag-storage",
+    desc: "S3-compatible object storage",
+    health: null,
+    pages: [
+      { label: "Console", href: "//:9001" },
+    ],
+    test: null
+  },
+];
+
+const tbody = document.getElementById("services");
+const panel = document.getElementById("result-panel");
+
+services.forEach(s => {
+  const pages = s.pages.map(p => {
+    const href = p.href.startsWith("//") ? location.protocol + "//" + location.hostname + p.href : p.href;
+    return `<a href="${href}">${p.label}</a>`;
+  }).join(" &middot; ");
+
+  const testCell = s.test
+    ? `<button class="btn-test" id="btn-${s.name}">${s.test.label}</button>`
+    : "&mdash;";
+
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><strong>${s.name}</strong> <span class="tag ${s.tagClass}">${s.tag}</span></td>
+    <td>${s.desc}</td>
+    <td>${pages}</td>
+    <td id="status-${s.name}"><span class="dot"></span>...</td>
+    <td>${testCell}</td>
+  `;
+  tbody.appendChild(tr);
+
+  if (s.health) {
+    fetch(s.health).then(r => {
+      const el = document.getElementById("status-" + s.name);
+      el.innerHTML = r.ok ? '<span class="dot up"></span>ok' : '<span class="dot down"></span>err';
+    }).catch(() => {
+      document.getElementById("status-" + s.name).innerHTML = '<span class="dot down"></span>down';
+    });
+  } else {
+    document.getElementById("status-" + s.name).innerHTML = '<span class="dot"></span>&mdash;';
+  }
+
+  if (s.test) {
+    document.getElementById("btn-" + s.name).addEventListener("click", () => runTest(s));
+  }
+});
+
+async function runTest(s) {
+  const btn = document.getElementById("btn-" + s.name);
+  btn.disabled = true;
+  btn.textContent = "running...";
+  const t0 = performance.now();
+
+  try {
+    const resp = await fetch(s.test.url, {
+      method: s.test.method,
+      headers: s.test.headers,
+      body: JSON.stringify(s.test.body),
+    });
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    const text = await resp.text();
+    let display;
+    try { display = JSON.stringify(JSON.parse(text), null, 2); } catch { display = text; }
+
+    addResult(s.name, s.test.label, resp.ok || resp.status === 207, resp.status, elapsed, display);
+  } catch (err) {
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    addResult(s.name, s.test.label, false, "ERR", elapsed, err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = s.test.label;
+  }
+}
+
+function addResult(name, label, ok, status, elapsed, body) {
+  const div = document.createElement("div");
+  div.className = "result-box " + (ok ? "result-ok" : "result-err");
+  div.innerHTML = `
+    <div class="result-header">
+      <span><strong>${name}</strong> &mdash; ${label} &mdash; HTTP ${status}</span>
+      <span class="elapsed">${elapsed}s</span>
+    </div>
+    <div class="result-body">${escapeHtml(body)}</div>
+  `;
+  panel.prepend(div);
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+</script>
+</body>
+</html>
