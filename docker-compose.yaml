@@ -114,6 +114,41 @@ services:
       - ./llogr/config.gateway.yaml:/app/config.yaml:ro
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - yallmp
+      - checkr
+      - llogr
+      - clickstream
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/architecture-dashboard.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/architecture-dashboard.json:/var/lib/grafana/dashboards/architecture-dashboard.json:ro
+      - ./grafana/business-metrics-dashboard.json:/var/lib/grafana/dashboards/business-metrics-dashboard.json:ro
+      - ./yallmp/grafana/yallmp-dashboard.json:/var/lib/grafana/dashboards/yallmp-dashboard.json:ro
+      - ./checkr/grafana/checkr-dashboard.json:/var/lib/grafana/dashboards/checkr-dashboard.json:ro
+      - ./clickstream/grafana/clickstream-dashboard.json:/var/lib/grafana/dashboards/clickstream-dashboard.json:ro
+      - ./llogr/grafana/llogr-dashboard.json:/var/lib/grafana/dashboards/llogr-dashboard.json:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   minio-data:
   clickhouse-data:
+  grafana-data:
