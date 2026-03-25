@@ -1,0 +1,46 @@
+##
+## Locust cluster — run alongside the main ai-suite stack.
+##
+## Usage:
+##   docker compose -f docker-compose.yaml -f load-tests/docker-compose.locust.yaml up locust-master locust-worker --scale locust-worker=4
+##
+## Web UI: http://localhost:8089
+##
+
+services:
+  locust-master:
+    image: locustio/locust:2.29.1
+    volumes:
+      - ./load-tests:/mnt/locust
+    command: >
+      -f /mnt/locust/locustfile.py
+      --master
+      --host http://nginx:80
+    ports:
+      - "8089:8089"
+    networks:
+      - default
+
+  locust-worker:
+    image: locustio/locust:2.29.1
+    volumes:
+      - ./load-tests:/mnt/locust
+    command: >
+      -f /mnt/locust/locustfile.py
+      --worker
+      --master-host locust-master
+      --host http://nginx:80
+    environment:
+      - SKIP_AUTH=${SKIP_AUTH:-true}
+      - AUTH_USERNAME=${AUTH_USERNAME:-}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-}
+      - AUTH_ORG_ID=${AUTH_ORG_ID:-}
+    depends_on:
+      - locust-master
+    networks:
+      - default
+
+networks:
+  default:
+    name: ai-suite_default
+    external: true
