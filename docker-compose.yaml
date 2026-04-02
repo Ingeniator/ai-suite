@@ -16,7 +16,7 @@ services:
     image: minio/minio
     command: server /data --console-address ":9001"
     ports:
-      - "9001:9001"
+      - "9002:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -51,11 +51,16 @@ services:
       LLM_PROXY_AUTHORIZATION_TYPE: "NONE"
       LLM_TRACING_ENABLED: "true"
       LLM_TRACING_BACKEND: "langfuse"
-      LANGFUSE_HOST: "http://llogr:8000"
-      LANGFUSE_PUBLIC_KEY: "pk-local"
-      LANGFUSE_SECRET_KEY: "sk-local"
+      LLM_TRACING_HOST: "http://llogr:5000"
     env_file:
       - ./yallmp/.env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/ai/livez')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    mem_limit: 512m
+    cpus: 1.0
     restart: unless-stopped
 
   checkr:
@@ -67,6 +72,13 @@ services:
       CHECKR_DEBUG: "false"
     env_file:
       - ./checkr/.env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/validators/livez')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    mem_limit: 512m
+    cpus: 1.0
     restart: unless-stopped
 
   clickhouse:
@@ -98,6 +110,13 @@ services:
       CLICKSTREAM_CH_URL: "http://clickhouse:8123"
       CLICKSTREAM_CH_PASSWORD: "clickhouse"
       CLICKSTREAM_API_KEY: "clickstream-key"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+    cpus: 0.5
     restart: unless-stopped
 
   llogr:
@@ -112,6 +131,11 @@ services:
       LLOGR_S3_ENDPOINT: http://minio:9000
     volumes:
       - ./llogr/config.gateway.yaml:/app/config.yaml:ro
+    #read_only: true
+    tmpfs:
+      - /tmp:exec,size=256m
+    mem_limit: 512m
+    cpus: 1.0
     restart: unless-stopped
 
   prometheus:

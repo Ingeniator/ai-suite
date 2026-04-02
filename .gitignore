@@ -3,6 +3,10 @@ yallmp/
 checkr/
 llogr/
 
+# Secrets
+.env
+*.env.local
+
 # OS
 .DS_Store
 

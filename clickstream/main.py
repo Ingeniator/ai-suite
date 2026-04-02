@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import time
@@ -149,19 +150,25 @@ async def httpapi(request: Request) -> JSONResponse:
 
     if rows:
         data = "\n".join(rows)
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{CH_URL}/",
-                    params={**ch_params(), "query": f"INSERT INTO {CH_DB}.{CH_TABLE} FORMAT JSONEachRow"},
-                    content=data,
-                    headers={"Content-Type": "application/json"},
-                )
-                resp.raise_for_status()
-            EVENTS_INGESTED.inc(len(rows))
-        except Exception:
-            CLICKHOUSE_ERRORS.inc()
-            raise
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(
+                        f"{CH_URL}/",
+                        params={**ch_params(), "query": f"INSERT INTO {CH_DB}.{CH_TABLE} FORMAT JSONEachRow"},
+                        content=data,
+                        headers={"Content-Type": "application/json"},
+                    )
+                    resp.raise_for_status()
+                EVENTS_INGESTED.inc(len(rows))
+                break
+            except Exception:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(0.5 * (2 ** attempt))
+                else:
+                    CLICKHOUSE_ERRORS.inc()
+                    raise
 
     return JSONResponse(content={
         "code": 200,
