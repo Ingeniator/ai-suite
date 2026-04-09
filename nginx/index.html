@@ -131,6 +131,23 @@ const services = [
     }
   },
   {
+    name: "dataimporter",
+    tag: "observability", tagClass: "tag-observability",
+    desc: "Browse & search logs across S3 / ClickHouse datasources",
+    health: "/dataimporter/health",
+    pages: [
+      { label: "Browser", href: "/dataimporter/" },
+      { label: "API docs", href: "/dataimporter/docs" },
+    ],
+    test: {
+      label: "List datasources",
+      method: "GET",
+      url: "/dataimporter/api/public/datasources",
+      headers: {},
+      body: null
+    }
+  },
+  {
     name: "minio",
     tag: "storage", tagClass: "tag-storage",
     desc: "S3-compatible object storage",
@@ -188,11 +205,9 @@ async function runTest(s) {
   const t0 = performance.now();
 
   try {
-    const resp = await fetch(s.test.url, {
-      method: s.test.method,
-      headers: s.test.headers,
-      body: JSON.stringify(s.test.body),
-    });
+    const opts = { method: s.test.method, headers: s.test.headers };
+    if (s.test.body) opts.body = JSON.stringify(s.test.body);
+    const resp = await fetch(s.test.url, opts);
     const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
     const text = await resp.text();
     let display;

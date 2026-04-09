@@ -10,6 +10,7 @@ services:
       - yallmp
       - checkr
       - llogr
+      - dataimporter
     restart: unless-stopped
 
   minio:
@@ -138,6 +139,22 @@ services:
     cpus: 1.0
     restart: unless-stopped
 
+  dataimporter:
+    build:
+      context: ./dataimporter
+    depends_on:
+      createbucket:
+        condition: service_completed_successfully
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./dataimporter/config.gateway.yaml:/app/config.yaml:ro
+    tmpfs:
+      - /tmp:exec,size=256m
+    mem_limit: 512m
+    cpus: 1.0
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -148,6 +165,7 @@ services:
       - yallmp
       - checkr
       - llogr
+      - dataimporter
       - clickstream
     restart: unless-stopped
 
