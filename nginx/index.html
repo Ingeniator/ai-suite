@@ -148,6 +148,16 @@ const services = [
     }
   },
   {
+    name: "langfuse",
+    tag: "observability", tagClass: "tag-observability",
+    desc: "Self-hosted LLM observability & tracing platform",
+    health: "/langfuse/api/public/health",
+    pages: [
+      { label: "Dashboard", href: "/langfuse" },
+    ],
+    test: null
+  },
+  {
     name: "minio",
     tag: "storage", tagClass: "tag-storage",
     desc: "S3-compatible object storage",

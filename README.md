@@ -185,6 +185,59 @@ clickhouse:
 
 **ClickBeat** proxies search queries to an external ClickBeat query API.
 
+### Kafka → ClickHouse (optional)
+
+If you add Kafka to the stack, ClickHouse can consume from it directly using its built-in Kafka engine — no extra services needed.
+
+**1. Add Kafka to docker-compose:**
+
+```yaml
+kafka:
+  image: bitnami/kafka:latest
+  environment:
+    KAFKA_CFG_NODE_ID: "1"
+    KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+    KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+    KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+    KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+    KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+    KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  volumes:
+    - kafka-data:/bitnami/kafka
+```
+
+**2. Create a Kafka queue table in ClickHouse:**
+
+```sql
+CREATE TABLE kafka_llogr_queue (
+    event_id    String,
+    event_type  String,
+    timestamp   DateTime64(3),
+    project_id  String,
+    model       String,
+    name        String,
+    trace_id    String,
+    session_id  String,
+    body        String
+) ENGINE = Kafka
+SETTINGS
+    kafka_broker_list = 'kafka:9092',
+    kafka_topic_list = 'llogr-events',
+    kafka_group_name = 'clickhouse-llogr',
+    kafka_format = 'JSONEachRow';
+```
+
+**3. Create a materialized view to sink into the final table:**
+
+```sql
+CREATE MATERIALIZED VIEW llogr_events_kafka_mv TO llogr_events AS
+SELECT * FROM kafka_llogr_queue;
+```
+
+ClickHouse now continuously consumes from the `llogr-events` topic and inserts into `llogr_events`. The Kafka queue table acts as a consumer — the materialized view triggers on each batch and writes to the destination table.
+
+This pattern also works for other sinks (S3 via Kafka Connect, Flink, etc.), but the ClickHouse Kafka engine is the simplest option when ClickHouse is already in the stack.
+
 ## UI pages
 
 | URL | Description |
