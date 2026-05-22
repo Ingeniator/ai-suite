@@ -2,6 +2,9 @@
 yallmp/
 checkr/
 llogr/
+typical_agent/
+dataimporter/
+seed/
 
 # Secrets
 .env

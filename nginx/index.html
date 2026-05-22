@@ -19,6 +19,7 @@ a:hover { text-decoration: underline; }
 .tag-validation { background: #dcfce7; color: #166534; }
 .tag-observability { background: #fef3c7; color: #92400e; }
 .tag-storage { background: #f3e8ff; color: #6b21a8; }
+.tag-dev { background: #f1f5f9; color: #475569; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #ccc; }
 .dot.up { background: #22c55e; }
 .dot.down { background: #ef4444; }
@@ -148,12 +149,28 @@ const services = [
     }
   },
   {
+    name: "aihub",
+    tag: "observability", tagClass: "tag-observability",
+    desc: "Leaderboard & chat history hub with Prometheus metrics",
+    health: "/ai/hub/health",
+    pages: [
+      { label: "API docs", href: "/ai/hub/docs" },
+    ],
+    test: {
+      label: "List leaderboard",
+      method: "GET",
+      url: "/ai/hub/api/v1/leaderboard",
+      headers: {},
+      body: null
+    }
+  },
+  {
     name: "langfuse",
     tag: "observability", tagClass: "tag-observability",
     desc: "Self-hosted LLM observability & tracing platform",
-    health: "/langfuse/api/public/health",
+    health: null,
     pages: [
-      { label: "Dashboard", href: "/langfuse" },
+      { label: "Dashboard", href: "//:3031" },
     ],
     test: null
   },
@@ -163,19 +180,46 @@ const services = [
     desc: "S3-compatible object storage",
     health: null,
     pages: [
-      { label: "Console", href: "//:9001" },
+      { label: "Console", href: "//:9002" },
     ],
     test: null
+  },
+  {
+    name: "dataset-mock",
+    tag: "dev", tagClass: "tag-dev",
+    desc: "Mock dataset service for testing the import UX",
+    health: "/dataset-mock/_mock/datasets",
+    pages: [
+      { label: "Datasets", href: "/dataset-mock/_mock/datasets" },
+    ],
+    test: {
+      label: "List datasets",
+      method: "GET",
+      url: "/dataset-mock/_mock/datasets",
+      headers: {},
+      body: null
+    }
   },
 ];
 
 const tbody = document.getElementById("services");
 const panel = document.getElementById("result-panel");
 
+function resolveUrl(path) {
+  if (!path) return null;
+  if (/^\/\/:\d+/.test(path)) {
+    const rest = path.slice(3); // "9100" or "9100/_mock/datasets"
+    const slash = rest.indexOf('/');
+    const port = slash === -1 ? rest : rest.slice(0, slash);
+    const tail = slash === -1 ? '' : rest.slice(slash);
+    return location.protocol + '//' + location.hostname + ':' + port + tail;
+  }
+  return path;
+}
+
 services.forEach(s => {
   const pages = s.pages.map(p => {
-    const href = p.href.startsWith("//") ? location.protocol + "//" + location.hostname + p.href : p.href;
-    return `<a href="${href}">${p.label}</a>`;
+    return `<a href="${resolveUrl(p.href)}">${p.label}</a>`;
   }).join(" &middot; ");
 
   const testCell = s.test
@@ -193,7 +237,7 @@ services.forEach(s => {
   tbody.appendChild(tr);
 
   if (s.health) {
-    fetch(s.health).then(r => {
+    fetch(resolveUrl(s.health)).then(r => {
       const el = document.getElementById("status-" + s.name);
       el.innerHTML = r.ok ? '<span class="dot up"></span>ok' : '<span class="dot down"></span>err';
     }).catch(() => {
@@ -217,7 +261,7 @@ async function runTest(s) {
   try {
     const opts = { method: s.test.method, headers: s.test.headers };
     if (s.test.body) opts.body = JSON.stringify(s.test.body);
-    const resp = await fetch(s.test.url, opts);
+    const resp = await fetch(resolveUrl(s.test.url), opts);
     const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
     const text = await resp.text();
     let display;
