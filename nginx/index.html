@@ -192,13 +192,22 @@ const services = [
     pages: [
       { label: "Datasets", href: "/dataset-mock/_mock/datasets" },
     ],
-    test: {
-      label: "List datasets",
-      method: "GET",
-      url: "/dataset-mock/_mock/datasets",
-      headers: {},
-      body: null
-    }
+    tests: [
+      {
+        label: "List datasets",
+        method: "GET",
+        url: "/dataset-mock/_mock/datasets",
+        headers: {},
+        body: null
+      },
+      {
+        label: "Clean datasets",
+        method: "DELETE",
+        url: "/dataset-mock/_mock/datasets",
+        headers: {},
+        body: null
+      },
+    ]
   },
 ];
 
@@ -222,8 +231,9 @@ services.forEach(s => {
     return `<a href="${resolveUrl(p.href)}">${p.label}</a>`;
   }).join(" &middot; ");
 
-  const testCell = s.test
-    ? `<button class="btn-test" id="btn-${s.name}">${s.test.label}</button>`
+  const allTests = s.tests || (s.test ? [s.test] : []);
+  const testCell = allTests.length
+    ? allTests.map((t, i) => `<button class="btn-test" id="btn-${s.name}-${i}">${t.label}</button>`).join(" ")
     : "&mdash;";
 
   const tr = document.createElement("tr");
@@ -247,33 +257,33 @@ services.forEach(s => {
     document.getElementById("status-" + s.name).innerHTML = '<span class="dot"></span>&mdash;';
   }
 
-  if (s.test) {
-    document.getElementById("btn-" + s.name).addEventListener("click", () => runTest(s));
-  }
+  allTests.forEach((t, i) => {
+    document.getElementById(`btn-${s.name}-${i}`).addEventListener("click", () => runTest(s, t, i));
+  });
 });
 
-async function runTest(s) {
-  const btn = document.getElementById("btn-" + s.name);
+async function runTest(s, t, i) {
+  const btn = document.getElementById(`btn-${s.name}-${i}`);
   btn.disabled = true;
   btn.textContent = "running...";
   const t0 = performance.now();
 
   try {
-    const opts = { method: s.test.method, headers: s.test.headers };
-    if (s.test.body) opts.body = JSON.stringify(s.test.body);
-    const resp = await fetch(resolveUrl(s.test.url), opts);
+    const opts = { method: t.method, headers: t.headers };
+    if (t.body) opts.body = JSON.stringify(t.body);
+    const resp = await fetch(resolveUrl(t.url), opts);
     const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
     const text = await resp.text();
     let display;
     try { display = JSON.stringify(JSON.parse(text), null, 2); } catch { display = text; }
 
-    addResult(s.name, s.test.label, resp.ok || resp.status === 207, resp.status, elapsed, display);
+    addResult(s.name, t.label, resp.ok || resp.status === 207, resp.status, elapsed, display);
   } catch (err) {
     const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
-    addResult(s.name, s.test.label, false, "ERR", elapsed, err.message);
+    addResult(s.name, t.label, false, "ERR", elapsed, err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = s.test.label;
+    btn.textContent = t.label;
   }
 }
 
