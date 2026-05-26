@@ -1,0 +1,28 @@
+# Runs the annotator-mock TUI inside a ttyd WebSocket terminal server.
+# Proxied at /annotator-tui/ by nginx → accessible in any browser.
+#
+# Multi-stage: grab the ttyd binary from the official image (unknown base),
+# then layer it onto python:3.12-slim which we control.
+
+FROM tsl0922/ttyd:latest AS ttyd-bin
+
+FROM python:3.12-slim
+
+COPY --from=ttyd-bin /usr/bin/ttyd /usr/local/bin/ttyd
+
+WORKDIR /app
+COPY requirements-tui.txt .
+RUN pip install --no-cache-dir -r requirements-tui.txt
+
+COPY tui.py .
+
+EXPOSE 7681
+
+# --writable  : allow keyboard input
+# -t fontSize : slightly smaller than default so 140-col TUI fits most screens
+CMD ["ttyd", \
+     "-p", "7681", \
+     "--writable", \
+     "-t", "fontSize=14", \
+     "-t", "lineHeight=1.2", \
+     "python3", "/app/tui.py", "--base", "http://annotator-mock:8010"]

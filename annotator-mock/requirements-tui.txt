@@ -1,0 +1,4 @@
+# extra deps for the TUI watcher — not needed inside the container
+textual>=0.80
+httpx>=0.24
+rich>=13
