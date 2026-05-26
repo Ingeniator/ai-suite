@@ -20,6 +20,8 @@ a:hover { text-decoration: underline; }
 .tag-observability { background: #fef3c7; color: #92400e; }
 .tag-storage { background: #f3e8ff; color: #6b21a8; }
 .tag-dev { background: #f1f5f9; color: #475569; }
+.tag-annotation { background: #fce7f3; color: #9d174d; }
+.tag-agent { background: #ccfbf1; color: #0f766e; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #ccc; }
 .dot.up { background: #22c55e; }
 .dot.down { background: #ef4444; }
@@ -34,6 +36,9 @@ btn { border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; font
 .result-body { padding: 16px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto; background: #fafafa; }
 .result-ok { border-left: 3px solid #22c55e; }
 .result-err { border-left: 3px solid #ef4444; }
+.embed-frame { display: none; max-width: 960px; margin-top: 16px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.12); border: 1px solid #e5e7eb; }
+.embed-frame.open { display: block; }
+.embed-frame iframe { display: block; width: 100%; height: 520px; border: none; background: #1a1a1a; }
 </style>
 </head>
 <body>
@@ -44,6 +49,7 @@ btn { border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; font
   </thead>
   <tbody id="services"></tbody>
 </table>
+<div id="embed-panel"></div>
 <div id="result-panel"></div>
 <script>
 const services = [
@@ -54,6 +60,7 @@ const services = [
     health: "/ai/health",
     pages: [
       { label: "Dashboard", href: "/ai/dashboard" },
+      { label: "Search", href: "/ai/search/ui" },
       { label: "API docs", href: "/ai/docs" },
     ],
     test: {
@@ -75,6 +82,7 @@ const services = [
     health: "/validators/health",
     pages: [
       { label: "Playground", href: "/validators/playground" },
+      { label: "Async Playground", href: "/validators/async-playground" },
       { label: "API docs", href: "/validators/docs" },
     ],
     test: {
@@ -185,6 +193,90 @@ const services = [
     test: null
   },
   {
+    name: "annotator-mock",
+    tag: "annotation", tagClass: "tag-annotation",
+    desc: "Tagme-compatible mock — simulates crowd annotation for CEFS ground-truth loop",
+    health: "/annotator-mock/health",
+    pages: [
+      { label: "API docs", href: "/annotator-mock/docs" },
+      { label: "Pools", href: "/annotator-mock/api/v0/pools" },
+      { label: "TUI", href: "/annotator-tui/", embed: true },
+    ],
+    tests: [
+      {
+        label: "Hardcoded pool",
+        method: "GET",
+        url: "/annotator-mock/api/v0/pools/hardcoded",
+        headers: {},
+        body: null
+      },
+      {
+        label: "Run annotation",
+        method: "POST",
+        url: "/annotator-mock/_test/run",
+        headers: { "Content-Type": "application/json" },
+        body: null,
+        // implemented below as a multi-step test
+        multiStep: true
+      },
+    ]
+  },
+  {
+    name: "typical-agent",
+    tag: "agent", tagClass: "tag-agent",
+    desc: "SRE incident investigation agent — classify, diagnose & remediate alerts via LLM pipeline",
+    health: "/typical-agent/health",
+    pages: [
+      { label: "API docs", href: "/typical-agent/docs" },
+      { label: "Scenarios", href: "/typical-agent/api/v0/scenarios" },
+    ],
+    tests: [
+      {
+        label: "List scenarios",
+        method: "GET",
+        url: "/typical-agent/api/v0/scenarios",
+        headers: {},
+        body: null
+      },
+      {
+        label: "Run all",
+        method: "POST",
+        url: "/typical-agent/api/v0/runs/all",
+        headers: {},
+        body: null,
+        multiStep: true
+      },
+    ]
+  },
+  {
+    name: "meta-evaluator",
+    tag: "annotation", tagClass: "tag-annotation",
+    desc: "CEFS orchestrator — bridges dataset-mock → annotator-mock, computes AI evaluator quality (accuracy, Cohen's κ)",
+    health: "/meta-evaluator/health",
+    pages: [
+      { label: "API docs",  href: "/meta-evaluator/docs" },
+      { label: "Runs",      href: "/meta-evaluator/api/v0/runs" },
+      { label: "Summary",   href: "/meta-evaluator/api/v0/summary" },
+    ],
+    tests: [
+      {
+        label: "Summary",
+        method: "GET",
+        url: "/meta-evaluator/api/v0/summary",
+        headers: {},
+        body: null
+      },
+      {
+        label: "Full CEFS run",
+        method: "POST",
+        url: "/meta-evaluator/_test/run",
+        headers: { "Content-Type": "application/json" },
+        body: null,
+        multiStep: true
+      },
+    ]
+  },
+  {
     name: "dataset-mock",
     tag: "dev", tagClass: "tag-dev",
     desc: "Mock dataset service for testing the import UX",
@@ -226,8 +318,35 @@ function resolveUrl(path) {
   return path;
 }
 
+const embedPanel = document.getElementById("embed-panel");
+let activeEmbed = null;  // currently open embed href
+
+function toggleEmbed(href, label) {
+  if (activeEmbed === href) {
+    // close
+    embedPanel.innerHTML = "";
+    activeEmbed = null;
+  } else {
+    activeEmbed = href;
+    embedPanel.innerHTML = `
+      <div class="embed-frame open">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#fafafa;border-bottom:1px solid #eee;">
+          <span style="font-size:13px;font-weight:600">${label}</span>
+          <span style="display:flex;gap:10px;align-items:center;">
+            <a href="${href}" target="_blank" style="font-size:12px">open in tab ↗</a>
+            <button onclick="toggleEmbed('${href}','${label}')" style="border:none;background:none;cursor:pointer;font-size:16px;color:#666">✕</button>
+          </span>
+        </div>
+        <iframe src="${href}" allowfullscreen></iframe>
+      </div>`;
+  }
+}
+
 services.forEach(s => {
   const pages = s.pages.map(p => {
+    if (p.embed) {
+      return `<a href="#" onclick="toggleEmbed('${resolveUrl(p.href)}','${p.label}');return false">${p.label}</a>`;
+    }
     return `<a href="${resolveUrl(p.href)}">${p.label}</a>`;
   }).join(" &middot; ");
 
@@ -266,8 +385,21 @@ async function runTest(s, t, i) {
   const btn = document.getElementById(`btn-${s.name}-${i}`);
   btn.disabled = true;
   btn.textContent = "running...";
-  const t0 = performance.now();
 
+  if (t.multiStep && s.name === "annotator-mock") {
+    await runAnnotatorMockTest(btn, t.label);
+    return;
+  }
+  if (t.multiStep && s.name === "typical-agent") {
+    await runTypicalAgentAllTest(btn, t.label);
+    return;
+  }
+  if (t.multiStep && s.name === "meta-evaluator") {
+    await runCefsRunTest(btn, t.label);
+    return;
+  }
+
+  const t0 = performance.now();
   try {
     const opts = { method: t.method, headers: t.headers };
     if (t.body) opts.body = JSON.stringify(t.body);
@@ -276,7 +408,6 @@ async function runTest(s, t, i) {
     const text = await resp.text();
     let display;
     try { display = JSON.stringify(JSON.parse(text), null, 2); } catch { display = text; }
-
     addResult(s.name, t.label, resp.ok || resp.status === 207, resp.status, elapsed, display);
   } catch (err) {
     const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
@@ -284,6 +415,171 @@ async function runTest(s, t, i) {
   } finally {
     btn.disabled = false;
     btn.textContent = t.label;
+  }
+}
+
+async function runAnnotatorMockTest(btn, label) {
+  const B = "/annotator-mock";
+  const POOL = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+  const t0 = performance.now();
+  const log = [];
+  const step = (msg) => { log.push(msg); btn.textContent = msg; };
+
+  try {
+    // 1. dataset
+    step("creating dataset…");
+    const ds = await fetch(B + "/api/v0/datasets", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({name: "dashboard-test-" + Date.now(), access: "organization"})
+    }).then(r => r.json());
+
+    // 2. upload traces as JSONL blob
+    step("uploading traces…");
+    const jsonl = [
+      {trace_id:"t1", score:0.42, verdict:"FAIL", llm_output:"sky is green"},
+      {trace_id:"t2", score:0.93, verdict:"PASS", llm_output:"Paris is capital"},
+      {trace_id:"t3", score:0.58, verdict:"PASS", llm_output:"water boils at 100C"},
+    ].map(r => JSON.stringify(r)).join("\n");
+    const fd = new FormData();
+    fd.append("file", new Blob([jsonl], {type:"application/json"}), "traces.jsonl");
+    await fetch(B + "/api/v0/datasets/" + ds.id + "/files", {method:"POST", body: fd});
+
+    // 3. project
+    step("creating project…");
+    const proj = await fetch(B + "/api/v0/markup_project", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({name: "dashboard-test"})
+    }).then(r => r.json());
+
+    // 4. assign pool
+    await fetch(B + "/api/v0/markup_project/" + proj.uid + "/pools/" + POOL, {method:"POST"});
+
+    // 5. create task (overlap=3)
+    step("creating task…");
+    const task = await fetch(B + "/api/v0/tasks", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({project_id: proj.uid, dataset_id: ds.id, overlap: 3, name: "dashboard-test"})
+    }).then(r => r.json());
+
+    // 6. start
+    step("starting annotation…");
+    await fetch(B + "/api/v0/tasks/" + task.uid + "/start", {method:"POST"});
+
+    // 7. poll
+    step("waiting for DONE…");
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      const {state} = await fetch(B + "/api/v0/tasks/" + task.uid + "/state").then(r => r.json());
+      if (state === "DONE") break;
+    }
+
+    // 8. results
+    step("fetching results…");
+    const stats = await fetch(B + "/api/v0/statistics/task/" + task.uid).then(r => r.json());
+    const asgns = await fetch(B + "/api/v0/assignments?task_id=" + task.uid).then(r => r.json());
+
+    const summary = {
+      task_id: task.uid,
+      state: stats.state,
+      items_total: stats.items_total,
+      items_done: stats.items_done,
+      assignments: asgns.items.map(a => ({
+        annotator: a.marker_name,
+        labels: a.items.map(it => it.result.label)
+      }))
+    };
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    addResult("annotator-mock", label, true, "OK", elapsed, JSON.stringify(summary, null, 2));
+  } catch(err) {
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    addResult("annotator-mock", label, false, "ERR", elapsed, err.message + "\n" + log.join("\n"));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+async function runTypicalAgentAllTest(btn, label) {
+  const B = "/typical-agent";
+  const t0 = performance.now();
+  btn.textContent = "starting…";
+
+  // Create the live log panel up front
+  const panelId = "ta-all-" + Date.now();
+  const div = document.createElement("div");
+  div.className = "result-box result-ok";
+  div.innerHTML = `
+    <div class="result-header">
+      <span><strong>typical-agent</strong> &mdash; Run all scenarios</span>
+      <span class="elapsed" id="${panelId}-elapsed">starting…</span>
+    </div>
+    <div class="result-body" id="${panelId}-body" style="max-height:600px;line-height:1.6"></div>
+  `;
+  panel.prepend(div);
+
+  const body = document.getElementById(`${panelId}-body`);
+  const elapsedEl = document.getElementById(`${panelId}-elapsed`);
+
+  function renderLogs(runs) {
+    const statusIcon = s => s === "done" ? "✓" : s === "error" ? "✗" : "⋯";
+    const statusColor = s => s === "done" ? "#16a34a" : s === "error" ? "#dc2626" : "#d97706";
+    let html = "";
+    for (const { run_id, scenario_id, run } of runs) {
+      const icon = statusIcon(run.status);
+      const color = statusColor(run.status);
+      html += `<div style="margin-bottom:14px">`;
+      html += `<div style="font-weight:600;color:${color}">${icon} ${escapeHtml(scenario_id)} <span style="font-weight:400;color:#888;font-size:11px">[${run.status}]</span></div>`;
+      for (const line of (run.logs || [])) {
+        html += `<div style="color:#555;padding-left:14px">${escapeHtml(line)}</div>`;
+      }
+      if (run.status === "done" && run.report) {
+        const r = run.report;
+        const c = r.classification;
+        html += `<div style="padding-left:14px;color:#1e40af;margin-top:2px">`;
+        html += `→ ${escapeHtml(c.type)} | ${escapeHtml(c.severity)} | ${escapeHtml(c.affected_component)} | quality ${r.quality?.score ?? "?"}/10`;
+        html += `</div>`;
+        html += `<div style="padding-left:14px"><a href="${escapeHtml(r.trace_url)}" target="_blank" style="font-size:12px">open trace ↗</a></div>`;
+      }
+      if (run.status === "error") {
+        html += `<div style="padding-left:14px;color:#dc2626">${escapeHtml(run.error || "unknown error")}</div>`;
+      }
+      html += `</div>`;
+    }
+    body.innerHTML = html;
+  }
+
+  try {
+    const { runs: runMeta } = await fetch(B + "/api/v0/runs/all", { method: "POST" }).then(r => r.json());
+    btn.textContent = "running…";
+
+    const state = runMeta.map(m => ({ ...m, run: { status: "running", logs: [], report: null, error: null } }));
+    renderLogs(state);
+
+    const done = new Set();
+    while (done.size < state.length) {
+      await new Promise(r => setTimeout(r, 1000));
+      elapsedEl.textContent = ((performance.now() - t0) / 1000).toFixed(1) + "s";
+
+      await Promise.all(state.map(async item => {
+        if (done.has(item.run_id)) return;
+        item.run = await fetch(B + "/api/v0/runs/" + item.run_id).then(r => r.json());
+        if (item.run.status !== "running") done.add(item.run_id);
+      }));
+
+      renderLogs(state);
+    }
+
+    const allOk = state.every(item => item.run.status === "done");
+    if (!allOk) div.className = "result-box result-err";
+    elapsedEl.textContent = ((performance.now() - t0) / 1000).toFixed(2) + "s";
+
+  } catch (err) {
+    div.className = "result-box result-err";
+    body.innerHTML = `<div style="color:#dc2626">${escapeHtml(err.message)}</div>`;
+    elapsedEl.textContent = ((performance.now() - t0) / 1000).toFixed(2) + "s";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
   }
 }
 

@@ -21,6 +21,9 @@ services:
       - dataimporter
       - aihub
       - langfuse-web
+      - annotator-mock
+      - annotator-tui
+      - typical-agent
     restart: unless-stopped
 
   minio:
@@ -98,13 +101,18 @@ services:
       CHECKR_HOST: "0.0.0.0"
       CHECKR_PORT: "5000"
       CHECKR_DEBUG: "false"
+      CHECKR_REDIS_URL: "redis://langfuse-redis:6379/1"
     env_file:
       - ./checkr/.env
+    depends_on:
+      langfuse-redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/validators/livez')"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 90s
     mem_limit: 512m
     cpus: 1.0
     restart: unless-stopped
@@ -188,6 +196,65 @@ services:
       retries: 6
     mem_limit: 128m
     cpus: 0.25
+    restart: unless-stopped
+
+  annotator-mock:
+    build:
+      context: ./annotator-mock
+    ports:
+      - "8010:8010"
+    environment:
+      PORT: "8010"
+      ROOT_PATH: "/annotator-mock"
+      ANNOTATION_SPEED: "2"       # items/sec per annotator; raise for faster tests
+      LABEL_W_AGREE: "70"
+      LABEL_W_DISAGREE: "20"
+      LABEL_W_PARTIAL: "10"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+    mem_limit: 128m
+    cpus: 0.25
+    restart: unless-stopped
+
+  annotator-tui:
+    build:
+      context: ./annotator-mock
+      dockerfile: Dockerfile.tui
+    depends_on:
+      annotator-mock:
+        condition: service_healthy
+    environment:
+      TERM: xterm-256color
+      COLORTERM: truecolor
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
+
+  typical-agent:
+    build:
+      context: ./typical_agent
+    depends_on:
+      langfuse-web:
+        condition: service_healthy
+    environment:
+      LM_STUDIO_BASE_URL: "http://host.docker.internal:1234/v1"
+      LM_STUDIO_API_KEY: "lm-studio"
+      LM_STUDIO_MODEL: "local-model"
+      LANGFUSE_HOST: "http://llogr:5000"
+      LANGFUSE_PUBLIC_KEY: "lf-pk-ai-suite"
+      LANGFUSE_SECRET_KEY: "lf-sk-ai-suite"
+      LANGFUSE_PROJECT_ID: "ai-suite-default"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 512m
+    cpus: 1.0
     restart: unless-stopped
 
   dataimporter:
@@ -387,7 +454,7 @@ services:
       timeout: 10s
       retries: 20
       start_period: 60s
-    mem_limit: 1g
+    mem_limit: 2g
     cpus: 1.0
     restart: unless-stopped
 
