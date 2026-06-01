@@ -1,5 +1,5 @@
 """
-annotator-mock — Tagme-compatible annotation service mock.
+annotator-mock — annotation service mock.
 
 Implements the minimal API subset needed for the CEFS loop:
   - Dataset management (create, upload files)
@@ -47,9 +47,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Annotator Mock (Tagme-compatible)",
+    title="Annotator Mock)",
     description=(
-        "Mock annotation service for CEFS. Implements the Tagme API subset "
+        "Mock annotation service for CEFS. "
         "needed to submit a dataset for annotation, start annotation, poll status, "
         "and retrieve labelled results (AGREE / DISAGREE / PARTIAL)."
     ),

@@ -13,8 +13,8 @@ GATEWAY = os.getenv("GATEWAY_URL", "http://localhost:8888")
 # ---------------------------------------------------------------------------
 # Auth helpers (mirrors the artillery before-flow)
 # ---------------------------------------------------------------------------
-AUTH_REALM = os.getenv("AUTH_REALM", "tagme-public")
-AUTH_CLIENT = os.getenv("AUTH_CLIENT_ID", "tagme")
+AUTH_REALM = os.getenv("AUTH_REALM", "public")
+AUTH_CLIENT = os.getenv("AUTH_CLIENT_ID", "service")
 AUTH_USER = os.getenv("AUTH_USERNAME", "")
 AUTH_PASS = os.getenv("AUTH_PASSWORD", "")
 AUTH_ORG = os.getenv("AUTH_ORG_ID", "")

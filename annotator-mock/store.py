@@ -1,6 +1,5 @@
 """
 In-memory state store for annotator-mock.
-Hardcoded annotator pool simulates Tagme-style crowd annotation.
 """
 from typing import Dict, List, Any, Optional
 import uuid

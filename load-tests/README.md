@@ -87,8 +87,8 @@ export AUTH_USERNAME=your-user
 export AUTH_PASSWORD=your-pass
 export AUTH_ORG_ID=your-org-id
 # optional overrides:
-export AUTH_REALM=tagme-public
-export AUTH_CLIENT_ID=tagme
+export AUTH_REALM=public
+export AUTH_CLIENT_ID=service
 ```
 
 ## Configuration
@@ -100,8 +100,8 @@ export AUTH_CLIENT_ID=tagme
 | `AUTH_USERNAME` | — | OIDC username |
 | `AUTH_PASSWORD` | — | OIDC password |
 | `AUTH_ORG_ID` | — | Organization ID header |
-| `AUTH_REALM` | `tagme-public` | Keycloak realm |
-| `AUTH_CLIENT_ID` | `tagme` | OIDC client ID |
+| `AUTH_REALM` | `public` | Keycloak realm |
+| `AUTH_CLIENT_ID` | `service` | OIDC client ID |
 | `LOAD_PROFILE` | `load` | Profile for `profiles.py` (`smoke`/`load`/`stress`/`spike`/`soak`) |
 
 ## Project structure
