@@ -23,6 +23,7 @@ services:
       - langfuse-web
       - annotator-mock
       - annotator-tui
+      - meta-evaluator
       - typical-agent
     restart: unless-stopped
 
@@ -53,6 +54,7 @@ services:
       mc mb --ignore-existing local/llogr-raw-events;
       mc mb --ignore-existing local/langfuse-events;
       mc mb --ignore-existing local/langfuse-media;
+      mc mb --ignore-existing local/trace-assets;
       "
 
   yallmp:
@@ -155,6 +157,25 @@ services:
     cpus: 0.5
     restart: unless-stopped
 
+  trino:
+    image: trinodb/trino:latest
+    ports:
+      - "8085:8080"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    mem_limit: 2g
+    cpus: 1.0
+    restart: unless-stopped
+
   llogr:
     build:
       context: ./llogr
@@ -219,6 +240,32 @@ services:
     cpus: 0.25
     restart: unless-stopped
 
+  meta-evaluator:
+    build:
+      context: ./meta-evaluator
+    ports:
+      - "8020:8020"
+    environment:
+      PORT: "8020"
+      ROOT_PATH: "/meta-evaluator"
+      DATASET_MOCK_URL: "http://dataset-mock:9100"
+      ANNOTATOR_MOCK_URL: "http://annotator-mock:8010"
+      ANNOTATION_OVERLAP: "3"
+      POLL_INTERVAL_SECONDS: "60"
+    depends_on:
+      dataset-mock:
+        condition: service_healthy
+      annotator-mock:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8020/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+    mem_limit: 128m
+    cpus: 0.25
+    restart: unless-stopped
+
   annotator-tui:
     build:
       context: ./annotator-mock
@@ -272,6 +319,8 @@ services:
         condition: service_healthy
       langfuse-redis:
         condition: service_healthy
+      trino:
+        condition: service_healthy
     volumes:
       - ./dataimporter/config.gateway.yaml:/app/config.yaml:ro
     tmpfs:
@@ -279,7 +328,7 @@ services:
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/livez')"]
       interval: 10s
-      timeout: 5s
+      timeout: 15s
       retries: 3
       start_period: 15s
     mem_limit: 512m
@@ -296,6 +345,8 @@ services:
         condition: service_healthy
       dataset-mock:
         condition: service_healthy
+      trino:
+        condition: service_healthy
     volumes:
       - ./dataimporter/config.gateway.yaml:/app/config.yaml:ro
     tmpfs:
@@ -305,7 +356,7 @@ services:
     healthcheck:
       test: ["CMD", "python", "-m", "arq", "--check", "dataimporter.worker.WorkerSettings"]
       interval: 15s
-      timeout: 5s
+      timeout: 15s
       retries: 3
       start_period: 10s
     mem_limit: 768m
@@ -364,11 +415,17 @@ services:
     depends_on:
       langfuse-web:
         condition: service_healthy
+      createbucket:
+        condition: service_completed_successfully
     environment:
       LANGFUSE_URL: "http://langfuse-web:3000"
       LANGFUSE_PUBLIC_KEY: "lf-pk-ai-suite"
       LANGFUSE_SECRET_KEY: "lf-sk-ai-suite"
       LANGFUSE_INGEST_TIMEOUT: "90"
+      S3_ENDPOINT: "http://minio:9000"
+      S3_ACCESS_KEY_ID: "minioadmin"
+      S3_SECRET_ACCESS_KEY: "minioadmin"
+      S3_BUCKET: "trace-assets"
     command: ["pytest", "tests/test_langfuse_integration.py", "-v"]
     profiles:
       - test
@@ -425,7 +482,6 @@ services:
       CLICKHOUSE_CLUSTER_ENABLED: "false"
       REDIS_HOST: "langfuse-redis"
       REDIS_PORT: "6379"
-      REDIS_AUTH: ""
       LANGFUSE_S3_EVENT_UPLOAD_BUCKET: "langfuse-events"
       LANGFUSE_S3_EVENT_UPLOAD_REGION: "us-east-1"
       LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: "http://minio:9000"

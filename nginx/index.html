@@ -193,9 +193,19 @@ const services = [
     test: null
   },
   {
+    name: "trino",
+    tag: "storage", tagClass: "tag-storage",
+    desc: "Distributed SQL query engine — federates dataimporter queries over ClickHouse",
+    health: null,
+    pages: [
+      { label: "Web UI", href: "//:8085/ui/" },
+    ],
+    test: null
+  },
+  {
     name: "annotator-mock",
     tag: "annotation", tagClass: "tag-annotation",
-    desc: "Tagme-compatible mock — simulates crowd annotation for CEFS ground-truth loop",
+    desc: "annotation mock — simulates crowd annotation for CEFS ground-truth loop",
     health: "/annotator-mock/health",
     pages: [
       { label: "API docs", href: "/annotator-mock/docs" },
@@ -577,6 +587,92 @@ async function runTypicalAgentAllTest(btn, label) {
     div.className = "result-box result-err";
     body.innerHTML = `<div style="color:#dc2626">${escapeHtml(err.message)}</div>`;
     elapsedEl.textContent = ((performance.now() - t0) / 1000).toFixed(2) + "s";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+async function runCefsRunTest(btn, label) {
+  const DM = "/dataset-mock";
+  const ME = "/meta-evaluator";
+  const t0 = performance.now();
+  const log = [];
+  const step = (msg) => { log.push(msg); btn.textContent = msg; };
+
+  try {
+    // 1. create dataset in dataset-mock (simulates what dataimporter would do)
+    step("creating dataset in dataset-mock…");
+    const dsResp = await fetch(DM + "/api/v0/datasets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer mock-token" },
+      body: JSON.stringify({ name: "cefs-test-" + Date.now(), access: "organization", dataset_type: "DATASET" })
+    });
+    const ds = await dsResp.json();
+
+    // 2. upload scored traces (each has a verdict field for meta-evaluation)
+    step("uploading scored traces…");
+    const traces = [
+      { trace_id: "tr-001", score: 0.91, verdict: "PASS", llm_output: "Paris is the capital of France." },
+      { trace_id: "tr-002", score: 0.38, verdict: "FAIL", llm_output: "The sky is green on a clear day." },
+      { trace_id: "tr-003", score: 0.71, verdict: "PASS", llm_output: "Water freezes at 0°C." },
+      { trace_id: "tr-004", score: 0.44, verdict: "FAIL", llm_output: "Dogs are a type of fish." },
+      { trace_id: "tr-005", score: 0.85, verdict: "PASS", llm_output: "The speed of light is ~3×10⁸ m/s." },
+    ];
+    const jsonl = traces.map(r => JSON.stringify(r)).join("\n");
+    const fd = new FormData();
+    fd.append("file", new Blob([jsonl], { type: "application/json" }), "scored_traces.jsonl");
+    await fetch(DM + "/api/v0/datasets/" + ds.id + "/files", {
+      method: "POST",
+      headers: { "Authorization": "Bearer mock-token" },
+      body: fd
+    });
+
+    // 3. trigger CEFS run in meta-evaluator
+    step("triggering CEFS run…");
+    const runResp = await fetch(ME + "/api/v0/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataset_id: ds.id, dataset_name: ds.name })
+    });
+    const run = await runResp.json();
+
+    // 4. poll run until terminal state
+    step("waiting for annotation + evaluation…");
+    let finalRun = run;
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      finalRun = await fetch(ME + "/api/v0/runs/" + run.id).then(r => r.json());
+      step(`[${finalRun.state}] ${finalRun.items_done}/${finalRun.items_total} items…`);
+      if (["DONE", "FAILED", "CANCELLED"].includes(finalRun.state)) break;
+    }
+
+    if (finalRun.state !== "DONE") {
+      throw new Error("run ended with state: " + finalRun.state + (finalRun.error ? " — " + finalRun.error : ""));
+    }
+
+    // 5. fetch summary
+    const summary = await fetch(ME + "/api/v0/summary").then(r => r.json());
+
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    const m = finalRun.metrics || {};
+    const report = {
+      run_id:          finalRun.id,
+      dataset:         finalRun.dataset_name,
+      items:           m.total,
+      agreement_rate:  m.agreement_rate,
+      accuracy:        m.accuracy,
+      precision:       m.precision,
+      recall:          m.recall,
+      f1:              m.f1,
+      cohens_kappa:    m.cohens_kappa,
+      confusion:       m.tp != null ? { tp: m.tp, fp: m.fp, tn: m.tn, fn: m.fn } : "no verdict data",
+      all_runs_summary: summary,
+    };
+    addResult("meta-evaluator", label, true, "OK", elapsed, JSON.stringify(report, null, 2));
+  } catch (err) {
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+    addResult("meta-evaluator", label, false, "ERR", elapsed, err.message + "\n\nSteps:\n" + log.join("\n"));
   } finally {
     btn.disabled = false;
     btn.textContent = label;

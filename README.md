@@ -1,65 +1,169 @@
 # ai-suite
 
-A local-first toolkit for working with LLMs: proxy, dataset validation, and trace collection — unified behind a single gateway.
+A local-first platform for running, evaluating, and continuously improving LLM systems.
+Unified behind a single nginx gateway on `:8888`.
+
+---
 
 ## Services
 
+### Tier 1 — Traffic & Trace Capture
+
 | Service | Description | Gateway route |
 |---------|-------------|---------------|
-| **yallmp** | LLM proxy with circuit breaker, cost tracking, tracing | `/ai/...` |
-| **checkr** | Multi-gate dataset validation with LLM-as-judge | `/validators/...` |
-| **llogr** | Langfuse-compatible trace collector with S3 storage | `/llogr/...` |
-| **minio** | S3-compatible object storage | Console: `:9001` |
-| **gateway** | Nginx reverse proxy — single entrypoint | `:8888` |
+| **yallmp** | LLM proxy — OpenAI-compatible, cost tracking, circuit breaker, tracing | `/ai/...` |
+| **llogr** | Langfuse-compatible trace store — S3 (minio) + ClickHouse + search | `/llogr/...` |
+| **langfuse** | Trace UI, score visualisation, dataset management | `:3031` (direct) |
+| **clickstream** | User-action event stream for human quality signals | internal |
+| **minio** | S3-compatible object store for raw trace JSONL and media | Console `:9002` |
+
+### Tier 2 — Automated Evaluation
+
+| Service | Description | Gateway route |
+|---------|-------------|---------------|
+| **checkr** | Multi-gate dataset/trace validator — G-Eval, GABRIEL, LLM-as-judge | `/validators/...` |
+| **typical-agent** | Demo SRE agent that evaluates its own output quality | `/typical-agent/...` |
+
+### Tier 3 — Dataset Curation
+
+| Service | Description | Gateway route |
+|---------|-------------|---------------|
+| **dataimporter** | Browse S3/ClickHouse/langfuse, sample scored traces, import to dataset services | `/dataimporter/...` |
+| **dataset-mock** | Local mock dataset service (target for dataimporter in dev/test) | `/dataset-mock/...` |
+
+### Tier 4 — CEFS Annotation Loop
+
+| Service | Description | Gateway route |
+|---------|-------------|---------------|
+| **annotator-mock** | Annotation mock service — simulates 3 annotators labelling each trace | `/annotator-mock/...` |
+| **annotator-tui** | Live TUI overseer for annotator-mock (projects / tasks / results) | `/annotator-tui/` |
+| **meta-evaluator** | CEFS orchestrator — bridges dataset-mock → annotator-mock, computes AI evaluator quality metrics | `/meta-evaluator/...` |
+
+### Tier 5 — Observability
+
+| Service | Description | Port |
+|---------|-------------|------|
+| **aihub** | Leaderboard + chat history — FastAPI + PostgreSQL | `/ai/hub/...` |
+| **prometheus** | Metrics collection from all services | `:9090` |
+| **grafana** | Dashboards for latency, cost, evaluator quality, CEFS metrics | `:3000` |
+
+---
 
 ## Quick start
 
 ```bash
-make up        # build and start everything
+docker compose up -d
 ```
 
-Open [http://localhost:8888](http://localhost:8888) — the index page shows all services with health status and test buttons.
+Open **http://localhost:8888** — the index page shows all services with live health dots and one-click test buttons.
 
 ```bash
-make down      # stop all
-make down-v    # stop all + delete volumes (minio data)
-make logs      # follow logs for all services
-make ps        # show running services
+docker compose down          # stop
+docker compose down -v       # stop + delete all volumes
+docker compose logs -f       # follow all logs
+docker compose ps            # show status
 ```
 
-### Start individual services
+### Start a subset
 
 ```bash
-make up-yallmp    # proxy only
-make up-checkr    # validators only
-make up-llogr     # llogr + minio
-make up-minio     # minio only
-make up-gateway   # nginx gateway only
+docker compose up -d yallmp llogr minio gateway
+docker compose up -d annotator-mock meta-evaluator dataset-mock
 ```
+
+---
 
 ## Architecture
 
 ```
-                    ┌──────────────────────────────────────────────┐
-                    │             nginx gateway :8888              │
-                    │  /ai/* ─► yallmp   /validators/* ─► checkr  │
-                    │  /llogr/* ─► llogr    /s3/* ─► minio        │
-                    └───────────────────┬──────────────────────────┘
+LLM apps / agents
+      │ OpenAI-compatible API calls
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   nginx gateway  :8888                       │
+│   /ai/*        ──► yallmp         /llogr/*   ──► llogr      │
+│   /validators/* ──► checkr        /ai/hub/*  ──► aihub      │
+│   /dataimporter/* ──► dataimporter  /s3/*    ──► minio       │
+│   /annotator-mock/* ──► annotator-mock                       │
+│   /annotator-tui/*  ──► annotator-tui (WebSocket/ttyd)       │
+│   /meta-evaluator/* ──► meta-evaluator                       │
+│   /typical-agent/*  ──► typical-agent                        │
+│   /dataset-mock/*   ──► dataset-mock                         │
+└─────────────────────────────────────────────────────────────┘
+      │                │                   │
+      ▼                ▼                   ▼
+  yallmp           llogr              checkr
+  (proxy)     (trace store)       (evaluator)
+      │          │     │               │
+      │          │  ClickHouse      langfuse
+      │          │  (indexed)       (trace UI)
+      │       minio
+      │       (raw S3)
+      │
+      ▼
+  LM Studio / any OpenAI-compatible backend  :1234
+
+─── CEFS annotation loop ────────────────────────────────────
+  dataimporter ──► dataset-mock ──► meta-evaluator
                                         │
-          ┌─────────────────────────────┼──────────────────────┐
-          │                             │                      │
-    ┌─────▼─────┐               ┌───────▼──────┐       ┌──────▼──────┐
-    │  yallmp   │──── traces ──►│    llogr     │       │   checkr    │
-    │  :5000    │               │    :8000     │       │   :5000     │
-    └─────┬─────┘               └───────┬──────┘       └──────┬──────┘
-          │                             │                      │
-          │ proxy                       │ store                │ LLM-as-judge
-          ▼                             ▼                      │
-    ┌───────────┐               ┌──────────────┐               │
-    │ LM Studio │               │    minio     │               │
-    │ :1234     │               │    :9000     │◄──────────────┘
-    └───────────┘               └──────────────┘    (via yallmp proxy)
+                              annotator-mock (3 simulated annotators)
+                                        │
+                              metrics: accuracy / κ / precision / recall
+                                        │
+                              prometheus ──► grafana
 ```
+
+---
+
+## CEFS — Continuous Evaluator Refinement System
+
+CEFS is the feedback loop that validates and improves the LLM evaluators themselves.
+
+```
+① Production traffic → yallmp → llogr (all traces captured)
+② checkr evaluates all traces async (PASS / FAIL + score)
+③ dataimporter samples borderline/disagreement cases → dataset-mock
+④ meta-evaluator picks up dataset → annotator-mock (human labels)
+⑤ meta-evaluator computes: agreement rate, accuracy, Cohen's κ
+⑥ metrics → prometheus / grafana / aihub leaderboard
+⑦ low accuracy → refine evaluator → back to ②
+```
+
+See [`docs/cefs.md`](docs/cefs.md) for the full design.
+
+### Try the full CEFS loop
+
+Use the **"Full CEFS run"** test button on the dashboard, or from the CLI:
+
+```bash
+# 1. push some scored traces into dataset-mock
+DS=$(curl -s -X POST http://localhost:8888/dataset-mock/api/v0/datasets \
+  -H 'Content-Type: application/json' -H 'Authorization: Bearer any' \
+  -d '{"name":"my-batch","access":"organization","dataset_type":"DATASET"}' | jq -r .id)
+
+printf '{"trace_id":"t1","score":0.91,"verdict":"PASS","llm_output":"Paris is the capital"}\n
+{"trace_id":"t2","score":0.32,"verdict":"FAIL","llm_output":"The sky is green"}' > /tmp/traces.jsonl
+
+curl -s -X POST "http://localhost:8888/dataset-mock/api/v0/datasets/$DS/files" \
+  -H 'Authorization: Bearer any' \
+  -F "file=@/tmp/traces.jsonl;type=application/json"
+
+# 2. trigger CEFS run (or wait up to 60s for the auto-poller)
+RUN=$(curl -s -X POST http://localhost:8888/meta-evaluator/api/v0/runs \
+  -H 'Content-Type: application/json' \
+  -d "{\"dataset_id\":\"$DS\",\"dataset_name\":\"my-batch\"}" | jq -r .id)
+
+# 3. poll until done
+until [ "$(curl -s http://localhost:8888/meta-evaluator/api/v0/runs/$RUN | jq -r .state)" = "DONE" ]; do
+  sleep 1; echo "waiting..."
+done
+
+# 4. see results
+curl -s http://localhost:8888/meta-evaluator/api/v0/runs/$RUN | jq .metrics
+curl -s http://localhost:8888/meta-evaluator/api/v0/summary
+```
+
+---
 
 ## Configuration
 
@@ -73,11 +177,11 @@ LLM_PROXY_TARGET_URL=http://host.docker.internal:1234
 LLM_PROXY_AUTHORIZATION_TYPE=NONE
 ```
 
-In docker-compose, `host.docker.internal` resolves to the host machine (Docker Desktop).
+`host.docker.internal` resolves to the host machine under Docker Desktop.
 
 ### Cost tracking
 
-Edit `yallmp/data/langchain/pricing.json` to add model pricing:
+Edit `yallmp/data/langchain/pricing.json`:
 
 ```json
 {
@@ -92,196 +196,63 @@ Edit `yallmp/data/langchain/pricing.json` to add model pricing:
 }
 ```
 
-Costs appear in the dashboard at `/ai/dashboard`.
-
-### Tracing (yallmp → llogr)
-
-Enabled in docker-compose via environment variables:
-
-```yaml
-LLM_TRACING_ENABLED: "true"
-LLM_TRACING_BACKEND: "langfuse"
-LANGFUSE_HOST: "http://llogr:8000"
-LANGFUSE_PUBLIC_KEY: "pk-local"
-LANGFUSE_SECRET_KEY: "sk-local"
-```
-
-yallmp uses the Langfuse v3 SDK which sends OTEL protobuf spans. llogr accepts both:
-- `POST /api/public/ingestion` — legacy Langfuse JSON batch API
-- `POST /api/public/otel/v1/traces` — OTLP/HTTP protobuf
+Costs appear at `/ai/dashboard`.
 
 ### Checkr LLM config
 
-Checkr uses yallmp as a proxy for LLM-as-judge calls. Configure in `checkr/config/llm.yaml`:
+Checkr routes judge calls through yallmp so they are traced. Configure in `checkr/config/llm.yaml`:
 
 ```yaml
 geval:
   model: llama-3.2-3b-instruct
-  api_key: "${GEVAL_API_KEY}"
-  api_base: http://yallmp:5000/ai/llm/v1
-
-gabriel:
-  model: llama-3.2-3b-instruct
-  api_key: "${OPENAI_API_KEY}"
   api_base: http://yallmp:5000/ai/llm/v1
 ```
 
-This routes all judge calls through yallmp, so they get traced in llogr.
+### llogr search backend
 
-### llogr configuration
+| Backend | Infra | Best for |
+|---------|-------|----------|
+| `duckdb` | None (in-process) | Dev / single pod |
+| `clickhouse` | ClickHouse instance | Production, high volume |
 
-llogr uses a YAML config file. The docker-compose setup mounts `llogr/config.gateway.yaml`:
+Configure in `llogr/config.gateway.yaml`.
 
-```yaml
-s3:
-  bucket: "llogr-raw-events"
-  region: "us-east-1"
-  endpoint: "http://minio:9000"
-  public_endpoint: "http://localhost:8888/s3"
-  access_key_id: "minioadmin"
-  secret_access_key: "minioadmin"
-
-clickbeat:
-  api_url: "http://clickbeat:9999/v1/events"
-  api_key: "your-key"
-  query_url: "http://clickbeat:9999/v1/query"    # optional, for search
-
-server:
-  root_path: "/llogr"
-
-features:
-  search_enabled: true          # enable full-text search
-  search_backend: "duckdb"      # "duckdb", "clickhouse", or "clickbeat"
-
-# only when search_backend: "clickhouse"
-clickhouse:
-  url: "http://clickhouse:8123"
-  database: "default"
-  table: "llogr_events"
-  user: "default"
-  password: ""
-```
-
-### Search backends
-
-| Backend | Infra needed | Best for |
-|---------|-------------|----------|
-| `duckdb` | None (in-process) | Dev/staging, single pod |
-| `clickhouse` | ClickHouse instance | Production, multi-pod, high volume |
-| `clickbeat` | ClickBeat service | When ClickBeat is already deployed |
-
-**DuckDB** scans S3 files directly using time-range pre-filtering. No index, no extra services.
-
-**ClickHouse** indexes events on ingestion and queries via SQL. Auto-creates the table on startup. Add to docker-compose:
-
-```yaml
-clickhouse:
-  image: clickhouse/clickhouse-server
-  ports:
-    - "8123:8123"
-  volumes:
-    - clickhouse-data:/var/lib/clickhouse
-```
-
-**ClickBeat** proxies search queries to an external ClickBeat query API.
-
-### Kafka → ClickHouse (optional)
-
-If you add Kafka to the stack, ClickHouse can consume from it directly using its built-in Kafka engine — no extra services needed.
-
-**1. Add Kafka to docker-compose:**
-
-```yaml
-kafka:
-  image: bitnami/kafka:latest
-  environment:
-    KAFKA_CFG_NODE_ID: "1"
-    KAFKA_CFG_PROCESS_ROLES: "broker,controller"
-    KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
-    KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
-    KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
-    KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
-    KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-  volumes:
-    - kafka-data:/bitnami/kafka
-```
-
-**2. Create a Kafka queue table in ClickHouse:**
-
-```sql
-CREATE TABLE kafka_llogr_queue (
-    event_id    String,
-    event_type  String,
-    timestamp   DateTime64(3),
-    project_id  String,
-    model       String,
-    name        String,
-    trace_id    String,
-    session_id  String,
-    body        String
-) ENGINE = Kafka
-SETTINGS
-    kafka_broker_list = 'kafka:9092',
-    kafka_topic_list = 'llogr-events',
-    kafka_group_name = 'clickhouse-llogr',
-    kafka_format = 'JSONEachRow';
-```
-
-**3. Create a materialized view to sink into the final table:**
-
-```sql
-CREATE MATERIALIZED VIEW llogr_events_kafka_mv TO llogr_events AS
-SELECT * FROM kafka_llogr_queue;
-```
-
-ClickHouse now continuously consumes from the `llogr-events` topic and inserts into `llogr_events`. The Kafka queue table acts as a consumer — the materialized view triggers on each batch and writes to the destination table.
-
-This pattern also works for other sinks (S3 via Kafka Connect, Flink, etc.), but the ClickHouse Kafka engine is the simplest option when ClickHouse is already in the stack.
+---
 
 ## UI pages
 
 | URL | Description |
 |-----|-------------|
-| `http://localhost:8888` | Index page — service table with health and test buttons |
-| `http://localhost:8888/ai/dashboard` | yallmp metrics: tokens, cost, latency |
-| `http://localhost:8888/ai/docs` | yallmp OpenAPI docs |
-| `http://localhost:8888/validators/playground` | checkr validation playground (Pyodide) |
-| `http://localhost:8888/validators/docs` | checkr OpenAPI docs |
-| `http://localhost:8888/llogr/` | llogr log browser with search |
-| `http://localhost:8888/llogr/docs` | llogr OpenAPI docs |
-| `http://localhost:9001` | MinIO console (minioadmin/minioadmin) |
+| `http://localhost:8888` | Dashboard — all services, health, test buttons |
+| `http://localhost:8888/ai/dashboard` | yallmp — tokens, cost, latency |
+| `http://localhost:8888/ai/docs` | yallmp OpenAPI |
+| `http://localhost:8888/validators/playground` | checkr validation playground |
+| `http://localhost:8888/validators/docs` | checkr OpenAPI |
+| `http://localhost:8888/llogr/` | llogr trace browser |
+| `http://localhost:8888/llogr/docs` | llogr OpenAPI |
+| `http://localhost:8888/dataimporter/` | dataimporter UI |
+| `http://localhost:8888/ai/hub/` | aihub leaderboard |
+| `http://localhost:8888/annotator-mock/docs` | annotator-mock OpenAPI |
+| `http://localhost:8888/annotator-tui/` | annotator-mock live TUI (browser terminal) |
+| `http://localhost:8888/meta-evaluator/docs` | meta-evaluator OpenAPI |
+| `http://localhost:8888/meta-evaluator/api/v0/summary` | CEFS aggregate metrics |
+| `http://localhost:8888/typical-agent/docs` | typical-agent OpenAPI |
+| `http://localhost:3000` | Grafana dashboards |
+| `http://localhost:3031` | Langfuse trace UI |
+| `http://localhost:9002` | MinIO console (`minioadmin` / `minioadmin`) |
+| `http://localhost:9090` | Prometheus |
 
-## Dataset export
+---
 
-The llogr log browser has an "Export as dataset" button that converts traces into checkr-compatible format:
+## Service READMEs
 
-```json
-[
-  {
-    "messages": [
-      {"role": "user", "content": "What is 2+2?"},
-      {"role": "assistant", "content": "4."}
-    ]
-  }
-]
-```
+Each service has its own README with API docs, env vars, and examples:
 
-This file can be uploaded directly to checkr's playground or posted to `/validators/api/v0/validate`.
-
-## Development
-
-Each service has its own Makefile:
-
-```bash
-cd yallmp && make run     # run locally
-cd checkr && make run     # run locally
-cd llogr && make dev  # run locally
-```
-
-Run tests:
-
-```bash
-cd yallmp && make test
-cd checkr && make test
-cd llogr && make test
-```
+- [`yallmp/README.md`](yallmp/README.md)
+- [`checkr/README.md`](checkr/README.md)
+- [`llogr/README.md`](llogr/README.md)
+- [`dataimporter/README.md`](dataimporter/README.md)
+- [`aihub/README.md`](aihub/README.md)
+- [`annotator-mock/README.md`](annotator-mock/README.md) — annotator-mock + annotator-tui
+- [`meta-evaluator/README.md`](meta-evaluator/README.md) — CEFS orchestrator
+- [`docs/cefs.md`](docs/cefs.md) — full CEFS design and roadmap
