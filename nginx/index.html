@@ -140,18 +140,18 @@ const services = [
     }
   },
   {
-    name: "dataimporter",
+    name: "databridge",
     tag: "observability", tagClass: "tag-observability",
-    desc: "Browse & search logs across S3 / ClickHouse datasources",
-    health: "/dataimporter/health",
+    desc: "Connection browser for S3, ClickHouse, Trino, Langfuse, and dataset sinks",
+    health: "/databridge/livez",
     pages: [
-      { label: "Browser", href: "/dataimporter/" },
-      { label: "API docs", href: "/dataimporter/docs" },
+      { label: "Browser", href: "/databridge/" },
+      { label: "API docs", href: "/databridge/docs" },
     ],
     test: {
-      label: "List datasources",
+      label: "List connections",
       method: "GET",
-      url: "/dataimporter/api/public/datasources",
+      url: "/databridge/api/v1/connections",
       headers: {},
       body: null
     }
@@ -195,7 +195,7 @@ const services = [
   {
     name: "trino",
     tag: "storage", tagClass: "tag-storage",
-    desc: "Distributed SQL query engine — federates dataimporter queries over ClickHouse",
+    desc: "Distributed SQL query engine — federates databridge queries over ClickHouse",
     health: null,
     pages: [
       { label: "Web UI", href: "//:8085/ui/" },
@@ -601,7 +601,7 @@ async function runCefsRunTest(btn, label) {
   const step = (msg) => { log.push(msg); btn.textContent = msg; };
 
   try {
-    // 1. create dataset in dataset-mock (simulates what dataimporter would do)
+    // 1. create dataset in dataset-mock (simulates what databridge would do)
     step("creating dataset in dataset-mock…");
     const dsResp = await fetch(DM + "/api/v0/datasets", {
       method: "POST",

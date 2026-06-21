@@ -18,15 +18,15 @@ scrape_configs:
     static_configs:
       - targets: ["checkr:5000"]
 
-  - job_name: dataimporter
+  - job_name: databridge
     metrics_path: /metrics
     static_configs:
-      - targets: ["dataimporter:5001"]
+      - targets: ["databridge:5010"]
 
-  - job_name: dataimporter-worker
+  - job_name: databridge-worker
     metrics_path: /metrics
     static_configs:
-      - targets: ["dataimporter-worker:9101"]
+      - targets: ["databridge-worker:9101"]
 
   - job_name: clickstream
     metrics_path: /metrics

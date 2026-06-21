@@ -86,6 +86,47 @@ DAG should discover it on the next scheduled run.
 
 ## Main DAG
 
+### First Slice: Automated Evaluation
+
+Start with `cefs_auto_evaluate_all_traces`: one generic Airflow DAG that scores
+every trace in the Airflow data interval for each active pipeline.
+
+```text
+cefs_auto_evaluate_all_traces
+  list_active_pipelines
+  for each pipeline:
+    build_score_request
+    create_score_run_with_checkr
+    wait_for_score_run_completion
+```
+
+This DAG intentionally does **only** automated evaluation. It does not sample
+for annotation, create human tasks, or compute meta-evaluation metrics. Those
+steps come after the scored-trace pool exists.
+
+The current first implementation lives at
+[`airflow/dags/cefs_auto_evaluate_all_traces.py`](../airflow/dags/cefs_auto_evaluate_all_traces.py).
+Until the CEFS registry/state API exists, it reads active pipelines from the
+Airflow Variable `CEFS_AUTO_EVAL_PIPELINES`:
+
+```json
+[
+  {
+    "pipeline_id": "ai-suite-default.hourly",
+    "trace_source_id": "llogr-clickhouse-prod",
+    "evaluator_version": "default",
+    "enabled": true
+  }
+]
+```
+
+The DAG calls checkr with `pipeline_id`, `trace_source_id`, the Airflow data
+interval, `evaluator_version`, `force_rescore`, and an idempotency key. checkr
+must load all traces for that window, run the active evaluator, persist score
+provenance, and expose score-run status.
+
+### Full CEFS Loop
+
 `cefs_continuous_loop` runs on a cadence and fans out over active pipelines.
 
 ```text
@@ -157,6 +198,44 @@ Input includes `pipeline_id`, `trace_source_id`, `time_window`,
 `evaluator_version`, and idempotency key. Output includes scored trace location,
 counts, and score provenance.
 
+Example request from Airflow:
+
+```json
+{
+  "pipeline_id": "ai-suite-default.hourly",
+  "trace_source_id": "llogr-clickhouse-prod",
+  "time_window": {
+    "start": "2026-06-01T00:00:00Z",
+    "end": "2026-06-01T01:00:00Z"
+  },
+  "evaluator_version": "default",
+  "force_rescore": false,
+  "idempotency_key": "ai-suite-default.hourly|score_all_traces|2026-06-01T00:00:00Z|2026-06-01T01:00:00Z|default"
+}
+```
+
+Minimum response:
+
+```json
+{
+  "score_run_id": "score-run-123",
+  "status": "queued"
+}
+```
+
+Status polling should eventually return `completed` with at least:
+
+```json
+{
+  "score_run_id": "score-run-123",
+  "status": "completed",
+  "input_trace_count": 1200,
+  "scored_trace_count": 1200,
+  "scored_trace_location": "s3://...",
+  "evaluator_version": "default"
+}
+```
+
 ### dataimporter
 
 ```text
@@ -213,10 +292,11 @@ per project or per agent.
 
 ## First Implementation Slice
 
-1. Add CEFS pipeline records and run records to the registry/state API.
-2. Implement `dataimporter POST /api/public/jobs/run`.
-3. Add idempotency keys to dataimporter jobs and meta-evaluator runs.
-4. Create `cefs_continuous_loop` DAG for one configured pipeline.
-5. Replace the single-pipeline query with `list_active_pipelines` and dynamic task mapping.
-6. Add a backfill DAG once evaluator versioning exists.
-
+1. Create `cefs_auto_evaluate_all_traces` DAG for one configured pipeline.
+2. Implement checkr `POST /cefs/score-runs` and `GET /cefs/score-runs/{score_run_id}`.
+3. Add CEFS pipeline records and run records to the registry/state API.
+4. Replace the Airflow Variable pipeline config with `list_active_pipelines`.
+5. Implement `dataimporter POST /api/public/jobs/run` for annotation sampling/export.
+6. Add idempotency keys to dataimporter jobs and meta-evaluator runs.
+7. Create `cefs_continuous_loop` by extending the automated evaluation DAG with sampling, annotation, and meta-evaluation.
+8. Add a backfill DAG once evaluator versioning exists.
