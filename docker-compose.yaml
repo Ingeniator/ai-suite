@@ -25,6 +25,19 @@ services:
       - annotator-tui
       - meta-evaluator
       - typical-agent
+      - notifier
+    restart: unless-stopped
+
+  notifier:
+    build:
+      context: ./notifier
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5030/notifier/livez')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    mem_limit: 128m
+    cpus: 0.25
     restart: unless-stopped
 
   minio:
@@ -382,7 +395,7 @@ services:
     tmpfs:
       - /tmp:exec,size=512m
     healthcheck:
-      test: ["CMD", "python", "-m", "arq", "--check", "worker.WorkerSettings"]
+      test: ["CMD", "python", "-m", "arq", "--check", "worker.__main__.WorkerSettings"]
       interval: 15s
       timeout: 15s
       retries: 3
