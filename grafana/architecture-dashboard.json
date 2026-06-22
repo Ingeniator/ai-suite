@@ -1,41 +1,42 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "Prometheus",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__requires": [
-    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
-    { "type": "datasource", "id": "prometheus", "name": "Prometheus" },
-    { "type": "panel", "id": "volkovlabs-dynamictext-panel", "name": "Business Text", "version": "5.0.0" },
-    { "type": "panel", "id": "stat", "name": "Stat" },
-    { "type": "panel", "id": "timeseries", "name": "Time series" },
-    { "type": "panel", "id": "table", "name": "Table" }
-  ],
   "id": null,
   "uid": "architecture-map",
   "title": "Architecture & Service Status",
   "description": "SVG architecture diagram with live service health status from blackbox probes",
-  "tags": ["architecture", "status", "ai-suite"],
+  "tags": [
+    "architecture",
+    "status",
+    "ai-suite"
+  ],
   "timezone": "browser",
   "editable": true,
   "graphTooltip": 1,
   "refresh": "15s",
-  "time": { "from": "now-5m", "to": "now" },
-  "templating": { "list": [] },
-  "annotations": { "list": [] },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
   "panels": [
     {
       "id": 1,
       "title": "",
-      "type": "volkovlabs-dynamictext-panel",
-      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 },
-      "datasource": "${DS_PROMETHEUS}",
+      "type": "marcusolsson-dynamictext-panel",
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -69,13 +70,16 @@
         }
       ],
       "options": {
-        "content": "<div style=\"width:100%;max-width:960px;margin:0 auto\">\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 680\" font-family=\"Inter,-apple-system,sans-serif\" font-size=\"13\" style=\"width:100%;height:auto\">\n  <defs>\n    <filter id=\"shadow\" x=\"-4%\" y=\"-4%\" width=\"108%\" height=\"112%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"3\" flood-opacity=\"0.10\"/></filter>\n    <linearGradient id=\"bgGrad\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#0d1117\"/><stop offset=\"100%\" stop-color=\"#161b22\"/></linearGradient>\n    <marker id=\"arrow\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#8b949e\"/></marker>\n    <marker id=\"arrowBlue\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#58a6ff\"/></marker>\n    <marker id=\"arrowOrange\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#d29922\"/></marker>\n    <marker id=\"arrowGreen\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#3fb950\"/></marker>\n  </defs>\n  <rect width=\"960\" height=\"680\" rx=\"12\" fill=\"url(#bgGrad)\"/>\n  <text x=\"480\" y=\"36\" text-anchor=\"middle\" fill=\"#e6edf3\" font-size=\"18\" font-weight=\"700\">AI Suite — Architecture &amp; Service Status</text>\n  <g transform=\"translate(720,52)\">\n    <rect x=\"0\" y=\"0\" width=\"220\" height=\"90\" rx=\"8\" fill=\"#21262d\" stroke=\"#30363d\" stroke-width=\"1\"/>\n    <circle cx=\"18\" cy=\"18\" r=\"6\" fill=\"#3fb950\"/><text x=\"32\" y=\"22\" fill=\"#c9d1d9\" font-size=\"11\">Healthy</text>\n    <circle cx=\"120\" cy=\"18\" r=\"6\" fill=\"#f85149\"/><text x=\"134\" y=\"22\" fill=\"#c9d1d9\" font-size=\"11\">Down</text>\n    <line x1=\"14\" y1=\"42\" x2=\"50\" y2=\"42\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n    <text x=\"58\" y=\"46\" fill=\"#c9d1d9\" font-size=\"11\">HTTP traffic</text>\n    <line x1=\"14\" y1=\"62\" x2=\"50\" y2=\"62\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n    <text x=\"58\" y=\"66\" fill=\"#c9d1d9\" font-size=\"11\">Traces / Events</text>\n    <line x1=\"14\" y1=\"82\" x2=\"50\" y2=\"82\" stroke=\"#3fb950\" stroke-width=\"2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n    <text x=\"58\" y=\"86\" fill=\"#c9d1d9\" font-size=\"11\">Metrics scrape</text>\n  </g>\n  <g id=\"node-client\" transform=\"translate(420,70)\">\n    <rect x=\"0\" y=\"0\" width=\"120\" height=\"44\" rx=\"22\" fill=\"#30363d\" stroke=\"#8b949e\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"60\" y=\"27\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"600\">Client</text>\n  </g>\n  <g id=\"node-nginx\" transform=\"translate(395,160)\">\n    <rect class=\"status-box\" data-service=\"nginx\" x=\"0\" y=\"0\" width=\"170\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"nginx\" cx=\"20\" cy=\"27\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">nginx</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">gateway :8888</text>\n  </g>\n  <g id=\"node-yallmp\" transform=\"translate(60,290)\">\n    <rect class=\"status-box\" data-service=\"yallmp\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"yallmp\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">yallmp</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">LLM Proxy :5000</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/ai/*</text>\n  </g>\n  <g id=\"node-checkr\" transform=\"translate(280,290)\">\n    <rect class=\"status-box\" data-service=\"checkr\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"checkr\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">checkr</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Validation :5000</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/validators/*</text>\n  </g>\n  <g id=\"node-llogr\" transform=\"translate(500,290)\">\n    <rect class=\"status-box\" data-service=\"llogr\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"llogr\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">llogr</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Trace Collector :8000</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/llogr/*</text>\n  </g>\n  <g id=\"node-clickstream\" transform=\"translate(720,290)\">\n    <rect class=\"status-box\" data-service=\"clickstream\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"clickstream\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">clickstream</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Event Collector :9999</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/2/httpapi</text>\n  </g>\n  <g id=\"node-minio\" transform=\"translate(340,440)\">\n    <rect x=\"0\" y=\"0\" width=\"150\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"75\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">minio</text>\n    <text x=\"75\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">S3 Storage :9000</text>\n  </g>\n  <g id=\"node-clickhouse\" transform=\"translate(600,440)\">\n    <rect x=\"0\" y=\"0\" width=\"170\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"85\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">clickhouse</text>\n    <text x=\"85\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Event DB :8123</text>\n  </g>\n  <g id=\"node-prometheus\" transform=\"translate(100,440)\">\n    <rect x=\"0\" y=\"0\" width=\"160\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#d29922\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"80\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">prometheus</text>\n    <text x=\"80\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Metrics :9090</text>\n  </g>\n  <g id=\"node-alertmanager\" transform=\"translate(100,560)\">\n    <rect x=\"0\" y=\"0\" width=\"160\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#f85149\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"80\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">alertmanager</text>\n    <text x=\"80\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Alerts :9093</text>\n  </g>\n  <g id=\"node-grafana\" transform=\"translate(340,560)\">\n    <rect x=\"0\" y=\"0\" width=\"150\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#d29922\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"75\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">grafana</text>\n    <text x=\"75\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Dashboards :3000</text>\n  </g>\n  <g id=\"node-blackbox\" transform=\"translate(600,560)\">\n    <rect x=\"0\" y=\"0\" width=\"170\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#d29922\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"85\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">blackbox</text>\n    <text x=\"85\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Probe Exporter :9115</text>\n  </g>\n  <line x1=\"480\" y1=\"114\" x2=\"480\" y2=\"158\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M420,214 Q320,250 210,288\" fill=\"none\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M460,214 Q420,250 400,288\" fill=\"none\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M500,214 Q540,250 560,288\" fill=\"none\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M545,214 Q600,300 460,438\" fill=\"none\" stroke=\"#58a6ff\" stroke-width=\"1.5\" stroke-dasharray=\"4,4\" marker-end=\"url(#arrowBlue)\"/>\n  <text x=\"570\" y=\"310\" fill=\"#58a6ff\" font-size=\"9\" transform=\"rotate(-40,570,310)\">/s3/* presigned</text>\n  <line x1=\"280\" y1=\"315\" x2=\"232\" y2=\"315\" stroke=\"#58a6ff\" stroke-width=\"1.5\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowBlue)\"/>\n  <text x=\"254\" y=\"308\" text-anchor=\"middle\" fill=\"#58a6ff\" font-size=\"9\">LLM judge</text>\n  <path d=\"M230,340 Q370,380 520,354\" fill=\"none\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <text x=\"380\" y=\"372\" text-anchor=\"middle\" fill=\"#d29922\" font-size=\"9\">traces</text>\n  <path d=\"M555,354 Q480,400 445,438\" fill=\"none\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <text x=\"486\" y=\"400\" fill=\"#d29922\" font-size=\"9\">S3 events</text>\n  <path d=\"M620,354 Q650,400 670,438\" fill=\"none\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <text x=\"656\" y=\"398\" fill=\"#d29922\" font-size=\"9\">index</text>\n  <line x1=\"670\" y1=\"322\" x2=\"718\" y2=\"322\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <text x=\"694\" y=\"314\" text-anchor=\"middle\" fill=\"#d29922\" font-size=\"9\">forward</text>\n  <path d=\"M805,354 Q790,400 740,438\" fill=\"none\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <text x=\"790\" y=\"398\" fill=\"#d29922\" font-size=\"9\">write</text>\n  <path d=\"M180,440 L180,370 Q180,360 170,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <path d=\"M190,440 Q280,400 330,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <path d=\"M200,440 Q400,380 540,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <path d=\"M210,440 Q500,380 760,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <line x1=\"180\" y1=\"494\" x2=\"180\" y2=\"558\" stroke=\"#f85149\" stroke-width=\"1.5\" marker-end=\"url(#arrow)\"/>\n  <text x=\"190\" y=\"530\" fill=\"#f85149\" font-size=\"9\">alerts</text>\n  <line x1=\"260\" y1=\"480\" x2=\"338\" y2=\"580\" stroke=\"#d29922\" stroke-width=\"1.5\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowOrange)\"/>\n  <path d=\"M685,560 Q800,450 810,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1\" stroke-dasharray=\"2,3\" marker-end=\"url(#arrowGreen)\"/>\n  <text x=\"780\" y=\"460\" fill=\"#3fb950\" font-size=\"9\" transform=\"rotate(-70,780,460)\">probes</text>\n  <g transform=\"translate(20,636)\">\n    <rect x=\"0\" y=\"0\" width=\"920\" height=\"30\" rx=\"6\" fill=\"#161b22\" stroke=\"#30363d\" stroke-width=\"1\"/>\n    <text x=\"460\" y=\"20\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">All HTTP traffic carries <tspan fill=\"#58a6ff\" font-weight=\"600\">X-Request-ID</tspan> for distributed tracing across nginx, yallmp, checkr, llogr</text>\n  </g>\n</svg>\n</div>",
+        "content": "<div style=\"width:100%;max-width:960px;margin:0 auto\">\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 680\" font-family=\"Inter,-apple-system,sans-serif\" font-size=\"13\" style=\"width:100%;height:auto\">\n  <defs>\n    <filter id=\"shadow\" x=\"-4%\" y=\"-4%\" width=\"108%\" height=\"112%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"3\" flood-opacity=\"0.10\"/></filter>\n    <linearGradient id=\"bgGrad\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#0d1117\"/><stop offset=\"100%\" stop-color=\"#161b22\"/></linearGradient>\n    <marker id=\"arrow\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#8b949e\"/></marker>\n    <marker id=\"arrowBlue\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#58a6ff\"/></marker>\n    <marker id=\"arrowOrange\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#d29922\"/></marker>\n    <marker id=\"arrowGreen\" viewBox=\"0 0 10 6\" refX=\"10\" refY=\"3\" markerWidth=\"8\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,3 L0,6 Z\" fill=\"#3fb950\"/></marker>\n  </defs>\n  <rect width=\"960\" height=\"680\" rx=\"12\" fill=\"url(#bgGrad)\"/>\n  <text x=\"480\" y=\"36\" text-anchor=\"middle\" fill=\"#e6edf3\" font-size=\"18\" font-weight=\"700\">AI Suite \u2014 Architecture &amp; Service Status</text>\n  <g transform=\"translate(720,52)\">\n    <rect x=\"0\" y=\"0\" width=\"220\" height=\"90\" rx=\"8\" fill=\"#21262d\" stroke=\"#30363d\" stroke-width=\"1\"/>\n    <circle cx=\"18\" cy=\"18\" r=\"6\" fill=\"#3fb950\"/><text x=\"32\" y=\"22\" fill=\"#c9d1d9\" font-size=\"11\">Healthy</text>\n    <circle cx=\"120\" cy=\"18\" r=\"6\" fill=\"#f85149\"/><text x=\"134\" y=\"22\" fill=\"#c9d1d9\" font-size=\"11\">Down</text>\n    <line x1=\"14\" y1=\"42\" x2=\"50\" y2=\"42\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n    <text x=\"58\" y=\"46\" fill=\"#c9d1d9\" font-size=\"11\">HTTP traffic</text>\n    <line x1=\"14\" y1=\"62\" x2=\"50\" y2=\"62\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n    <text x=\"58\" y=\"66\" fill=\"#c9d1d9\" font-size=\"11\">Traces / Events</text>\n    <line x1=\"14\" y1=\"82\" x2=\"50\" y2=\"82\" stroke=\"#3fb950\" stroke-width=\"2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n    <text x=\"58\" y=\"86\" fill=\"#c9d1d9\" font-size=\"11\">Metrics scrape</text>\n  </g>\n  <g id=\"node-client\" transform=\"translate(420,70)\">\n    <rect x=\"0\" y=\"0\" width=\"120\" height=\"44\" rx=\"22\" fill=\"#30363d\" stroke=\"#8b949e\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"60\" y=\"27\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"600\">Client</text>\n  </g>\n  <g id=\"node-nginx\" transform=\"translate(395,160)\">\n    <rect class=\"status-box\" data-service=\"nginx\" x=\"0\" y=\"0\" width=\"170\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"nginx\" cx=\"20\" cy=\"27\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">nginx</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">gateway :8888</text>\n  </g>\n  <g id=\"node-yallmp\" transform=\"translate(60,290)\">\n    <rect class=\"status-box\" data-service=\"yallmp\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"yallmp\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">yallmp</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">LLM Proxy :5000</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/ai/*</text>\n  </g>\n  <g id=\"node-checkr\" transform=\"translate(280,290)\">\n    <rect class=\"status-box\" data-service=\"checkr\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"checkr\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">checkr</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Validation :5000</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/validators/*</text>\n  </g>\n  <g id=\"node-llogr\" transform=\"translate(500,290)\">\n    <rect class=\"status-box\" data-service=\"llogr\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"llogr\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">llogr</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Trace Collector :5000</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/llogr/*</text>\n  </g>\n  <g id=\"node-clickstream\" transform=\"translate(720,290)\">\n    <rect class=\"status-box\" data-service=\"clickstream\" x=\"0\" y=\"0\" width=\"170\" height=\"64\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"2\" filter=\"url(#shadow)\"/>\n    <circle class=\"status-dot\" data-service=\"clickstream\" cx=\"20\" cy=\"20\" r=\"7\" fill=\"#8b949e\"/>\n    <text x=\"90\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">clickstream</text>\n    <text x=\"90\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Event Collector :9999</text>\n    <text x=\"90\" y=\"54\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"10\">/2/httpapi</text>\n  </g>\n  <g id=\"node-minio\" transform=\"translate(340,440)\">\n    <rect x=\"0\" y=\"0\" width=\"150\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"75\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">minio</text>\n    <text x=\"75\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">S3 Storage :9000</text>\n  </g>\n  <g id=\"node-clickhouse\" transform=\"translate(600,440)\">\n    <rect x=\"0\" y=\"0\" width=\"170\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#8b949e\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"85\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">clickhouse</text>\n    <text x=\"85\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Event DB :8123</text>\n  </g>\n  <g id=\"node-prometheus\" transform=\"translate(100,440)\">\n    <rect x=\"0\" y=\"0\" width=\"160\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#d29922\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"80\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">prometheus</text>\n    <text x=\"80\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Metrics :9090</text>\n  </g>\n  <g id=\"node-grafana\" transform=\"translate(340,560)\">\n    <rect x=\"0\" y=\"0\" width=\"150\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#d29922\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"75\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">grafana</text>\n    <text x=\"75\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Dashboards :3000</text>\n  </g>\n  <g id=\"node-blackbox\" transform=\"translate(600,560)\">\n    <rect x=\"0\" y=\"0\" width=\"170\" height=\"54\" rx=\"10\" fill=\"#21262d\" stroke=\"#d29922\" stroke-width=\"1.5\" filter=\"url(#shadow)\"/>\n    <text x=\"85\" y=\"24\" text-anchor=\"middle\" fill=\"#e6edf3\" font-weight=\"700\" font-size=\"14\">blackbox</text>\n    <text x=\"85\" y=\"40\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">Probe Exporter :9115</text>\n  </g>\n  <line x1=\"480\" y1=\"114\" x2=\"480\" y2=\"158\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M420,214 Q320,250 210,288\" fill=\"none\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M460,214 Q420,250 400,288\" fill=\"none\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M500,214 Q540,250 560,288\" fill=\"none\" stroke=\"#58a6ff\" stroke-width=\"2\" marker-end=\"url(#arrowBlue)\"/>\n  <path d=\"M230,340 Q370,380 520,354\" fill=\"none\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <text x=\"380\" y=\"372\" text-anchor=\"middle\" fill=\"#d29922\" font-size=\"9\">traces</text>\n  <path d=\"M555,354 Q480,400 445,438\" fill=\"none\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <path d=\"M620,354 Q650,400 670,438\" fill=\"none\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <line x1=\"670\" y1=\"322\" x2=\"718\" y2=\"322\" stroke=\"#d29922\" stroke-width=\"2\" stroke-dasharray=\"6,3\" marker-end=\"url(#arrowOrange)\"/>\n  <path d=\"M180,440 L180,370 Q180,360 170,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <path d=\"M190,440 Q280,400 330,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <path d=\"M200,440 Q400,380 540,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <path d=\"M210,440 Q500,380 760,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1.2\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowGreen)\"/>\n  <line x1=\"260\" y1=\"480\" x2=\"338\" y2=\"580\" stroke=\"#d29922\" stroke-width=\"1.5\" stroke-dasharray=\"3,3\" marker-end=\"url(#arrowOrange)\"/>\n  <path d=\"M685,560 Q800,450 810,354\" fill=\"none\" stroke=\"#3fb950\" stroke-width=\"1\" stroke-dasharray=\"2,3\" marker-end=\"url(#arrowGreen)\"/>\n  <g transform=\"translate(20,636)\">\n    <rect x=\"0\" y=\"0\" width=\"920\" height=\"30\" rx=\"6\" fill=\"#161b22\" stroke=\"#30363d\" stroke-width=\"1\"/>\n    <text x=\"460\" y=\"20\" text-anchor=\"middle\" fill=\"#8b949e\" font-size=\"11\">All HTTP traffic carries <tspan fill=\"#58a6ff\" font-weight=\"600\">X-Request-ID</tspan> for distributed tracing across nginx, yallmp, checkr, llogr</text>\n  </g>\n</svg>\n</div>",
         "defaultContent": "No data",
         "everyRow": false,
-        "editor": { "language": "html", "format": "none" },
-        "renderMode": "everyRow",
+        "editor": {
+          "language": "html",
+          "format": "none"
+        },
+        "renderMode": "data",
         "wrap": true,
-        "afterRender": "const container = context.element;\nconst svg = container.querySelector('svg');\nif (!svg) return;\n\nconst services = ['nginx','yallmp','checkr','llogr','clickstream'];\nconst status = {};\n\n// Extract probe_success values from data frames\nif (context.data && context.data.length > 0) {\n  context.data.forEach(function(frame) {\n    if (!frame.fields) return;\n    var nameField = frame.fields.find(f => f.name === 'Value' || f.type === 'number');\n    var name = frame.name || (frame.refId || '').toLowerCase();\n    // Match legend format names\n    services.forEach(function(svc) {\n      if (name.includes(svc) || (frame.fields[1] && String(frame.fields[1].values[frame.fields[1].values.length - 1]).includes(svc))) {\n        var valField = frame.fields.find(f => f.type === 'number');\n        if (valField && valField.values.length > 0) {\n          status[svc] = valField.values[valField.values.length - 1];\n        }\n      }\n    });\n  });\n}\n\n// Also try the simpler series approach\nif (context.grafana && context.grafana.replaceVariables) {\n  // fallback\n}\n\n// Apply colors to SVG elements\nservices.forEach(function(svc) {\n  var color = '#8b949e'; // unknown/grey\n  if (status[svc] === 1) color = '#3fb950'; // green\n  else if (status[svc] === 0) color = '#f85149'; // red\n  \n  var boxes = svg.querySelectorAll('[data-service=\"' + svc + '\"].status-box');\n  var dots = svg.querySelectorAll('[data-service=\"' + svc + '\"].status-dot');\n  boxes.forEach(function(el) { el.setAttribute('stroke', color); });\n  dots.forEach(function(el) { el.setAttribute('fill', color); });\n});",
+        "afterRender": "\nconst container = context.element;\nconst svg = container.querySelector('svg');\nif (!svg) return;\n\nconst services = ['nginx', 'yallmp', 'checkr', 'llogr', 'clickstream'];\nconst status = {};\n\nconst series = (context.panelData && context.panelData.series) || [];\nseries.forEach(function(frame) {\n  const legend = (frame.name || '').toLowerCase();\n  const valField = frame.fields && frame.fields.find(function(f) { return f.type === 'number'; });\n  if (!valField || !valField.values || !valField.values.length) return;\n  const val = valField.values[valField.values.length - 1];\n  services.forEach(function(svc) {\n    if (legend.includes(svc)) status[svc] = val;\n  });\n});\n\nservices.forEach(function(svc) {\n  const color = status[svc] === 1 ? '#3fb950' : (status[svc] === 0 ? '#f85149' : '#8b949e');\n  svg.querySelectorAll('[data-service=\"' + svc + '\"].status-box').forEach(function(el) {\n    el.setAttribute('stroke', color);\n  });\n  svg.querySelectorAll('[data-service=\"' + svc + '\"].status-dot').forEach(function(el) {\n    el.setAttribute('fill', color);\n  });\n});\n",
         "externalStyles": [],
         "styles": ""
       },
@@ -89,8 +93,16 @@
       "id": 2,
       "title": "yallmp",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 20 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -102,21 +114,65 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "READY", "color": "green" } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "READY",
+                  "color": "green"
+                }
+              }
+            }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "green" }] },
-          "color": { "mode": "thresholds" }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
     },
     {
       "id": 3,
       "title": "checkr",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 20 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 5,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -128,21 +184,65 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "READY", "color": "green" } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "READY",
+                  "color": "green"
+                }
+              }
+            }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "green" }] },
-          "color": { "mode": "thresholds" }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
     },
     {
       "id": 4,
       "title": "llogr",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 20 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 10,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -154,21 +254,65 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "READY", "color": "green" } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "READY",
+                  "color": "green"
+                }
+              }
+            }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "green" }] },
-          "color": { "mode": "thresholds" }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
     },
     {
       "id": 5,
       "title": "clickstream",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 20 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 15,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -180,21 +324,65 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "READY", "color": "green" } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "READY",
+                  "color": "green"
+                }
+              }
+            }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "green" }] },
-          "color": { "mode": "thresholds" }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
     },
     {
       "id": 6,
       "title": "nginx",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 20 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -206,21 +394,65 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "HEALTHY", "color": "green" } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "HEALTHY",
+                  "color": "green"
+                }
+              }
+            }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "red" }, { "value": 1, "color": "green" }] },
-          "color": { "mode": "thresholds" }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "justifyMode": "center" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center"
+      }
     },
     {
       "id": 7,
       "title": "Probe Latency by Service",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -240,18 +472,40 @@
             "pointSize": 4,
             "showPoints": "auto"
           },
-          "color": { "mode": "palette-classic" }
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } }
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "id": 8,
       "title": "Service Uptime (Last 24h)",
       "type": "stat",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -291,23 +545,53 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "value": null, "color": "red" },
-              { "value": 0.95, "color": "yellow" },
-              { "value": 0.999, "color": "green" }
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 0.95,
+                "color": "yellow"
+              },
+              {
+                "value": 0.999,
+                "color": "green"
+              }
             ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "textMode": "auto", "justifyMode": "auto", "orientation": "horizontal" }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "horizontal"
+      }
     },
     {
       "id": 9,
       "title": "All Probe Results",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
-      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -321,8 +605,15 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true },
-            "renameByName": { "instance": "Endpoint", "job": "Probe Type", "Value": "Status" }
+            "excludeByName": {
+              "Time": true,
+              "__name__": true
+            },
+            "renameByName": {
+              "instance": "Endpoint",
+              "job": "Probe Type",
+              "Value": "Status"
+            }
           }
         }
       ],
@@ -330,29 +621,81 @@
         "defaults": {},
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Status" },
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
             "properties": [
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "0": { "text": "FAIL", "color": "red" }, "1": { "text": "OK", "color": "green" } } }
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "1": {
+                        "text": "OK",
+                        "color": "green"
+                      }
+                    }
+                  }
                 ]
               },
-              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
             ]
           }
         ]
       },
-      "options": { "showHeader": true, "sortBy": [{ "displayName": "Probe Type" }] }
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Probe Type"
+          }
+        ]
+      }
     }
   ],
   "schemaVersion": 39,
   "version": 1,
   "links": [
-    { "title": "Business Metrics", "url": "/d/business-metrics", "type": "link", "icon": "dashboard" },
-    { "title": "yallmp", "url": "/d/yallmp-dashboard", "type": "link", "icon": "dashboard" },
-    { "title": "llogr", "url": "/d/llogr-dashboard", "type": "link", "icon": "dashboard" },
-    { "title": "checkr", "url": "/d/checkr-dashboard", "type": "link", "icon": "dashboard" },
-    { "title": "clickstream", "url": "/d/clickstream-dashboard", "type": "link", "icon": "dashboard" }
+    {
+      "title": "Business Metrics",
+      "url": "/d/business-metrics",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "yallmp",
+      "url": "/d/yallmp-dashboard",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "llogr",
+      "url": "/d/llogr-dashboard",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "checkr",
+      "url": "/d/checkr-dashboard",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "clickstream",
+      "url": "/d/clickstream-dashboard",
+      "type": "link",
+      "icon": "dashboard"
+    }
   ]
 }

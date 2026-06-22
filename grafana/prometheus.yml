@@ -11,7 +11,7 @@ scrape_configs:
   - job_name: llogr
     metrics_path: /metrics
     static_configs:
-      - targets: ["llogr:8000"]
+      - targets: ["llogr:5000"]
 
   - job_name: checkr
     metrics_path: /metrics
@@ -32,3 +32,63 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["clickstream:9999"]
+
+  - job_name: aihub
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["aihub:5000"]
+
+  - job_name: blackbox-health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://gateway:80/health
+        labels:
+          instance: nginx:8888
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: blackbox-ready
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://yallmp:5000/ai/livez
+          - http://checkr:5000/validators/livez
+          - http://llogr:5000/livez
+          - http://clickstream:9999/health
+          - http://databridge:5010/livez
+          - http://aihub:5000/livez
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: blackbox-livez
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://yallmp:5000/ai/livez
+          - http://checkr:5000/validators/livez
+          - http://llogr:5000/livez
+          - http://clickstream:9999/health
+          - http://databridge:5010/livez
+          - http://aihub:5000/livez
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
